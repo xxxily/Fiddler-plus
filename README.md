@@ -1,5 +1,6 @@
-# Fiddler plus 【高效调试分析工具】
+# Fiddler plus 【高效调试分析利器】
 
+Fiddler是一个功能强大的HTTP抓包调试工具！但用起来却不是那么的顺手，界面繁杂、配置复杂，非常不符合高效程序猿的使用习惯...   
 Fiddler plus 重新定义了Fiddler的CustomRules.js，从而使Fiddler拥有了更加简单、灵活、丰富的配置方式，高逼格的显示界面，让你用起来不再羞(gan)涩(ga)。
 
 
@@ -10,7 +11,8 @@ Fiddler plus 重新定义了Fiddler的CustomRules.js，从而使Fiddler拥有了
 * 简单配置即可彻底解决跨域开发的窘境
 * 强大的过滤功能，轻松过滤无关链接
 
-## 优点
+
+## 优点&目标
 	功能强大、配置简单
 	
 ## 界面截图
@@ -27,3 +29,138 @@ Fiddler plus 重新定义了Fiddler的CustomRules.js，从而使Fiddler拥有了
 
 你也可以通过Fiddle菜单栏下的 Rules》Customize Rules...   即可打开编辑CustomRules
 
+## 全局配置项一览
+```javascript
+/**
+ * 全局配置项
+ * 可配置链接类型的颜色，代理、替换地址等，
+ * 默认对象的键【key】为要匹配的规则，值【key】为匹配后的配置
+ */
+var GLOBAL_SETTING:Object = {
+    // 开启或禁止缓存
+    disableCaching:true,
+    // 过滤配置【用于过滤出哪些URL需要显示，哪些需要隐藏】
+    Filter:{
+        // 只显示URL包含以下字符的连接
+        showLinks:[],
+        // 隐藏URL包含以下字符串的连接 过滤
+        hideLinks:[],
+        // 只显示以下文件类型【注意：是根据header的 Content-Type字段进行匹配的，所以js文件直接写js是不行的,但支持模糊匹配 】
+        // 附注：使用ContentType过滤的时候不一定准确，不带 ContentType的连接会被自动隐藏，该过滤选项的逻辑还有待优化和完善
+        showContentType:[],
+        // 隐藏以下文件类型
+        hideContentType:[]
+    },
+    // 替换URL【可用于多环境切换、解决跨域、快速调试线上脚本等】
+    replace:{
+        "http://xxxily.com/":"http://xxxily.cc/",
+        "":""
+    },
+    // 替换URL的高级版，可以实现多个项目区分管理，进行二级匹配等
+    replacePlus:[
+        {
+            describe:"将【xxxily】服务器上的静态资源替换成本地服务器上的资源",
+            source:[
+                "http://xxxily.net",
+                "http://xxxily.org",
+                "http://xxxily.ac.cn",
+                "http://xxxily.cc"
+            ],
+            urlContain:"\\.html|\\.css|\\.js|\\.jpeg|\\.jpg|\\.png|\\.gif|\\.mp4|\\.flv|\\.webp",
+            replaceWith:"http://localhost:3000",
+            enabled:false
+        },
+        {
+            describe:"将【本地】请求的接口替换成某个服务器上的接口内容",
+            source:[
+                "http://localhost:3000/",
+                "http://127.0.0.1:3000/",
+                "http://192.168.0.101:3000/"
+            ],
+            urlContain:"",
+            urlUnContain:"\\.html|\\.css|\\.js|\\.jpeg|\\.jpg|\\.png|\\.gif|\\.ico|\\.mp4|\\.flv|\\.webp|/browser-sync/",
+            // bgColor:"#2c2c2c",
+            color:"#FF0000",
+            // bold:"true",
+            replaceWith:"http://xxxily.cc/",
+            enabled:false
+        }
+    ],
+    // 界面显示配置【可以对不同链接进行颜色标识，以便快速定位相关链接】
+    UI:{
+        // 默认文本颜色
+        color:"#c0c0c0",//灰白色
+        // 默认背景颜色
+        bgColor:"#2c2c2c",//浅黑
+        bgColor_02:"#2f2f2f",//浅黑【用于做交替背景，可以不设置】
+        // bgColor_02:"#4b4a4a",
+        // 链接返回报错时的颜色
+        onError:{
+            // bgColor:"#2c2c2c",
+            color:"#FF0000" //错误红
+            // ,bold:"true"
+        },
+        // 不同关键词匹配对应的连接颜色，key 对应的是匹配的关键字，val对应的是匹配的颜色
+        linkColor:{
+            "\\.jpg|\\.png|\\.gif":"#ffccff", //粉紫色
+            "\\.js":"#00ff00", //原谅色
+            "\\.css":"#ffcc66", //米黄
+            "\\.html":"#00d7ff", //蓝色
+            "\\.php":"#fff32d", //大黄
+            "\\.jsp":"#fd4107" //砖红
+        },
+        // 可以为特殊状态码设置不同颜色，方便快速定位一些错误链接，例如404等
+        // 注意：这个只是根据responseCode 来匹配的，一些不存在response的链接配置是无效的，例如 502,504状态，应该是在onError里配置的
+        statusCode:{
+            "404|408|500|502|504":"#FF0000", //错误红
+            "304":"#5e5e5e" //浅灰色
+        },
+        // 高亮，对特殊的链接进行高亮设置，方便跟踪查看链接
+        highlight:{
+            "http://localhost|192.168":{
+                // bgColor:"#2c2c2c", //浅黑
+                color:"#00ff00", //原谅色
+                bold:"true",
+                describe:"高亮测试"
+            },
+            "hm.baidu.com":{
+                bgColor:"#FF0000", //红色
+                color:"#fdf404", //黄色
+                bold:"true",
+                describe:"高亮测试"
+            },
+            "":""
+        }
+    },
+    // 一些实用工具集，先列个可能会开发的工具集，留个坑以后有时间再开发
+    Tools:{
+        // TODO API 测试工具
+        apiTest:{},
+        // TODO 重放攻击工具
+        replay:{},
+        // TODO js 格式化工具
+        jsFormat:{},
+        // TODO css 格式化工具
+        cssFormat:{},
+        // TODO 内容注入工具
+        contentInject:{},
+        // TODO 类似 weinre 这样的注入调试工具
+        weinre:{}
+    },
+    // 多项分隔符号【同一个配置需匹配多项规则时可以通过分隔符进行区分，这样就不用每个规则都要新开一份配置那么繁琐】
+    splitStr:"|",
+    // 正则匹配的修饰符：i,g,m 默认i，不区分大小写
+    regAttr:"i"
+};
+//全局配置项 END
+```
+
+
+	目前主要实现了：代理、替换、过滤、UI(skin)等功能；已经可满足绝大部分开发需求了，后续将继续完善
+	
+	暂时先这样，后续等代码完善好了再补充说明文档...
+
+## 开发计划：
+	1、UI(skin)后续打算实现成多套可选的形式，然后可以针对域名指定不同的配色方案，这样就不用隐藏连接也可以快速区分哪些是当前需要关注的连接。
+	2、全局禁止缓存感觉很蠢，严重影响正常上网体验，所以缓存也计划加入到 replacePlus 配置项里，针对性禁止缓存
+	

@@ -17,12 +17,25 @@ var GLOBAL_SETTING:Object = {
     // 过滤配置【用于过滤出哪些URL需要显示，哪些需要隐藏】
     Filter:{
         // 只显示URL包含以下字符的连接
-        showLinks:[],
+        showLinks:[
+            // "qq.com",
+            // "baidu.com",
+            // "youdao.com"
+        ],
         // 隐藏URL包含以下字符串的连接 过滤
-        hideLinks:[],
+        hideLinks:[
+            // "baidu.com|qzone.qq.com|qq.com",
+            "hm.baidu.com",
+            "google.com|googleapis.com"
+        ],
         // 只显示以下文件类型【注意：是根据header的 Content-Type字段进行匹配的，所以js文件直接写js是不行的,但支持模糊匹配 】
         // 附注：使用ContentType过滤的时候不一定准确，不带 ContentType的连接会被自动隐藏，该过滤选项的逻辑还有待优化和完善
-        showContentType:[],
+        showContentType:[
+            // "image"
+            // "css",
+            // "html",
+            // "javascript"
+        ],
         // 隐藏以下文件类型
         hideContentType:[]
     },

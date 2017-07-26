@@ -42,12 +42,25 @@ var GLOBAL_SETTING:Object = {
     // 过滤配置【用于过滤出哪些URL需要显示，哪些需要隐藏】
     Filter:{
         // 只显示URL包含以下字符的连接
-        showLinks:[],
+        showLinks:[
+            // "qq.com",
+            // "baidu.com",
+            // "youdao.com"
+        ],
         // 隐藏URL包含以下字符串的连接 过滤
-        hideLinks:[],
+        hideLinks:[
+            // "baidu.com|qzone.qq.com|qq.com",
+            "hm.baidu.com",
+            "google.com|googleapis.com"
+        ],
         // 只显示以下文件类型【注意：是根据header的 Content-Type字段进行匹配的，所以js文件直接写js是不行的,但支持模糊匹配 】
         // 附注：使用ContentType过滤的时候不一定准确，不带 ContentType的连接会被自动隐藏，该过滤选项的逻辑还有待优化和完善
-        showContentType:[],
+        showContentType:[
+            // "image"
+            // "css",
+            // "html",
+            // "javascript"
+        ],
         // 隐藏以下文件类型
         hideContentType:[]
     },
@@ -154,8 +167,10 @@ var GLOBAL_SETTING:Object = {
 };
 //全局配置项 END
 ```
-
-
+特别说明：Fiddler 的 CustomRules.js 修改配置保存后是会自动立即生效的，无需重启    
+所以做服务器代理转发、切换开发环境的时候，写好配置后，只需打开或注释掉某行配置，然后保存即可实现实时切换
+  
+	
 	目前主要实现了：代理、替换、过滤、UI(skin)等功能；已经可满足绝大部分开发需求了，后续将继续完善
 	
 	暂时先这样，后续等代码完善好了再补充说明文档...

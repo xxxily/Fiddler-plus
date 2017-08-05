@@ -46,6 +46,35 @@ Fiddler的本质是一个代理，既然是代理，也就是说：客户端的�
 * [Fiddler](http://www.telerik.com/fiddler) 功能强大，HTTP(s)类抓包软件应有的功能都有，而且是免费，但界面一般，配置界面繁杂（这也是功能强大的一个体现吧...）~好在拥有FiddlerScript，支持个性化定制，插件开发等,你完全可以通过它打造出一个属于自己的调试工具，当然前提是你要有一定的折腾精神。本文后面的高级教程将教你如何定制自己的Fiddler，打造一个高逼格且高效的Fiddler
 * [anyproxy](https://github.com/alibaba/anyproxy)、[whistle](https://github.com/avwo/whistle) 是基于nodejs开发，具有良好的跨平台特性，而且源码开放，有很强的可定制性！非常适合喜欢折腾的极客“把玩”！当然目前也有不少缺点，例如进行https抓包时卡顿，存在一定的不稳定情况，anyproxy已经很久没人更新维护等。总的来说类免费、开源、跨平台的产品可以还需继续努力完善！希望有一天可以完全取代Fiddler吧！
 
+## Fiddler初级教程
+
+该部分纯粹为新手教程，主要讲解Fiddler的下载安装、界面、选项等，如果你不是新手，请跳过本章内容。
+## 下载
+Fiddler的官网地址为：http://www.telerik.com/fiddler  
+下载地址：https://www.telerik.com/download/fiddler  
+进入下载页面后你将看到如下界面：  
+  
+![Fiddler](img/downloadFiddler_dec01.png)  
+  
+可以看到Fiddler要求你选择一个使用它的用途，随便选择一个选项即可，  
+下面还有两个下载链接，一个是下载OS X（Mac）版本的Fiddler，另外一个是Linux版本的Fiddler，如果你有需要，可以点击下载安装，具体安装步骤和过程这里不介绍~  
+  
+选择用途后出现如下界面：  
+  
+  ![Fiddler](img/downloadFiddler_dec02.png)    
+ 
+ 出现了是否同意使用的用户协议选项，选择Yes即可，然后又出现如下的填写用户邮箱界面：  
+  
+  ![Fiddler](img/downloadFiddler_dec03.png)  
+  
+随便填写一个格式正确的邮箱地址即可点击下载按钮进行下载了，跳到下载页面，等待一段时间就会开始下载。  
+下载好后双击即可开始安装了。。。
+
+如果你觉得以上步骤打开太慢，操作繁琐，可以到百度软件中心下载，详细地址请自行百度搜索：Fiddler 。
+
+## 安装
+
+
 ## 更多教程内容还在编写中...
 
 更多教程内容还在编写中，如果你急不可耐，可以阅看下面的参考资料，教程将根据这些参考资料以及个人的经验进行编写~

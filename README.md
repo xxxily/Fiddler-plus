@@ -5,8 +5,8 @@ Fiddler plus 重新定义了Fiddler的CustomRules.js，从而使Fiddler拥有了
 
 
 ## 开发进度说明：
-	最后面提到的开发计划，现已基本开发完，但最近在写说明文档，所以还需过一段时间才会发布新版本~  
-	ps:文档比代码难写多了！有木有。。。
+	~~最后面提到的开发计划，现已基本开发完，但最近在写说明文档，所以还需过一段时间才会发布新版本~~~
+	~~ps:文档比代码难写多了！有木有。。。~~
 
 
 ## 特点
@@ -52,6 +52,9 @@ var GLOBAL_SETTING:Object = {
             // "baidu.com",
             // "youdao.com"
         ],
+        // 不能直接吧 :443规则写在 hideLinks 过滤项上，否则大部分的无关链接都会被间接隐藏
+        // Tunnel To 影响前端审查，隐藏掉，目前无法彻底隐藏，逻辑待优化
+        hideTunnelTo:true,
         // 隐藏URL包含以下字符串的连接 过滤
         hideLinks:[
             // "baidu.com|qzone.qq.com|qq.com",
@@ -104,6 +107,14 @@ var GLOBAL_SETTING:Object = {
             enabled:false
         }
     ],
+
+    // 进行字符串查找，如果查找到将在Log面板显示查找结果
+    Search: {
+	    inRequestHeaders: [],
+	    inResponseHeaders: [],
+	    inResponseBody: []
+	},
+
     // 界面显示配置【可以对不同链接进行颜色标识，以便快速定位相关链接】
     UI:{
         // 默认文本颜色
@@ -156,10 +167,6 @@ var GLOBAL_SETTING:Object = {
         apiTest:{},
         // TODO 重放攻击工具
         replay:{},
-        // TODO js 格式化工具
-        jsFormat:{},
-        // TODO css 格式化工具
-        cssFormat:{},
         // TODO 内容注入工具
         contentInject:{},
         // TODO 类似 weinre 这样的注入调试工具
@@ -181,6 +188,10 @@ var GLOBAL_SETTING:Object = {
 	暂时先这样，后续等代码完善好了再补充说明文档...
 
 ## 开发计划：
-	1、UI(skin)后续打算实现成多套可选的形式，然后可以针对域名指定不同的配色方案，这样就不用隐藏连接也可以快速区分哪些是当前需要关注的连接。
-	2、全局禁止缓存感觉很蠢，严重影响正常上网体验，所以缓存也计划加入到 replacePlus 配置项里，针对性禁止缓存
+	~~1、UI(skin)后续打算实现成多套可选的形式，然后可以针对域名指定不同的配色方案，这样就不用隐藏连接也可以快速区分哪些是当前需要关注的连接。~~
+	~~2、全局禁止缓存感觉很蠢，严重影响正常上网体验，所以缓存也计划加入到 replacePlus 配置项里，针对性禁止缓存~~
+	1、完善替换功能，实现替换本地文件
+	2、完善搜索查找功能
+	2、实现搜索替换和注入等功能
+
 	

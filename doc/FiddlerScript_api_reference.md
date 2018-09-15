@@ -82,3 +82,6 @@
 * utilSetResponseBody(sString ) 用字符串替换掉原来的返回内容，并自动更新header的Content-Length字段，移除Transfer-Encoding/Content-Encoding
 * WriteToStream(oFS bHeadersOnly ) 将session或session的header写入指定流里
 * FiddlerObject.log( "当前测试字段："+oSession.GetResponseBodyEncoding() );
+
+
+

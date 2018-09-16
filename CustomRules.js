@@ -51,7 +51,7 @@ var GLOBAL_SETTING: Object = {
         workAt:'request', // request|response
         display:true,
         filterList:[
-          'do1'
+          'xxxily.cc'
         ],
         enabled: false
       }
@@ -132,6 +132,35 @@ var GLOBAL_SETTING: Object = {
           oSession.oRequest['Cookie'] = "aaa";
         }
 
+      },
+      enabled: false
+    },
+    {
+      describe: "篡改登录信息示例",
+      source:[
+        'https://xxxily.cc/portal/userLoginAction!checkUser.action'
+      ],
+      onEvent:'OnBeforeRequest',
+      callback:function(oSession,eventName){
+        var webForms = oSession.GetRequestBodyAsString(),
+          strConv = coreApi.strConv,
+          webFormsObj = strConv.parse(webForms);
+
+        webFormsObj['username'] = "testUser";
+        webFormsObj['password'] = "testPw";
+
+        oSession.utilSetRequestBody(strConv.stringify(webFormsObj));
+      },
+      enabled: false
+    },
+    {
+      describe: "内容注入示例",
+      source:[
+        ''
+      ],
+      onEvent:'OnBeforeRequest',
+      callback:function(oSession,eventName){
+        /*TODO 示例代码待编写*/
       },
       enabled: false
     }
@@ -283,6 +312,57 @@ if (!alert) {
 }
 // 调试方法 END
 
+/*核心API 内置一些常用的方法 BEGIN*/
+var coreApi: Object = {
+  /*字符串转换器*/
+  strConv:{
+    /**
+     * 把具有某些规则的字符串转换为对象字面量，例如：a=1&b=2&c=3
+     * @param regularStr （String） -必选，某个规则的字符串
+     * #param splitStr （String） -可选 分隔符，默认&
+     */
+    parse:function parse (regularStr,splitStr) {
+      var str = regularStr || '',
+        splitStr = splitStr || '&',
+        obj = {},
+        arr = str.split(splitStr),
+        len = arr.length;
+
+      for(var i = 0 ; i < len ; i++){
+        var curArr = arr[i].split('=');
+        obj[curArr[0]] = curArr[1];
+      }
+      if(!str){
+        obj = {} ;
+      }
+      return obj ;
+    },
+    /**
+     * 把使用上面的parse方法转换的对象，重新转换成字符串表达形式
+     * @param obj （object） -必选，某个对象
+     * #param splitStr （String） -可选 分隔符，默认&
+     */
+    stringify:function (obj,splitStr) {
+      if(!obj){
+        return ;
+      }
+      var splitStr = splitStr || '&',
+        strArr = [] ;
+      for (var key in obj) {
+        var val = obj[key],
+          valType = typeof val ;
+        if( (valType === 'string' || valType === 'number') && val != "" ){
+          strArr.push(key+'='+val);
+        }else if(valType === 'object'){
+          /*二级对象是不支持的，为了不报错，将二级对象使用[object]进行代替*/
+          strArr.push(key+'='+'[object]');
+        }
+      }
+      return strArr.join(splitStr);
+    }
+  }
+};
+/*核心常用API 内置一些常用的方法 END*/
 
 /**
  * 自动移除禁止项，减少后续逻辑不必要的循环消耗

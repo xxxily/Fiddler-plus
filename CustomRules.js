@@ -1,6 +1,6 @@
 ﻿/*!
  * Fiddler CustomRules
- * @Version 1.0.1
+ * @Version 1.0.2
  * @Author xxxily
  * @home https://github.com/xxxily/Fiddler-plus
  * @bugs https://github.com/xxxily/Fiddler-plus/issues
@@ -42,6 +42,19 @@ var GLOBAL_SETTING: Object = {
       // "192.168",
       // "hm.baidu.com",
       // "google.com|googleapis.com|mail.google|www.google",
+    ],
+    // 头部字段过滤器,除非您很熟悉或想测试下这部分功能，否则不建议您使用该过滤项
+    headerFieldFilter: [
+      {
+        //可选值 Referer Content-Type|Cookie|User-Agent|Accept-Language|Host 等，只要是头部支持的值都可以
+        fieldName:'Referer',
+        workAt:'request', // request|response
+        display:true,
+        filterList:[
+          'do1'
+        ],
+        enabled: false
+      }
     ],
     // 只显示以下文件类型【注意：是根据header的 Content-Type字段进行匹配的，所以js文件直接写js是不行的,但支持模糊匹配 】
     // 附注：使用ContentType过滤的时候不一定准确，不带 ContentType的连接会被自动隐藏，该过滤选项的逻辑还有待优化和完善
@@ -92,6 +105,35 @@ var GLOBAL_SETTING: Object = {
       // bold:"true",
       replaceWith:"http://xxxily.cc/",
       enabled:false
+    }
+  ],
+  
+  // 注意：如果匹配的链接过多，很容易导致：数组下标超限/未将对象应用设置到对象实例等错误弹窗提示
+  callbackAcion:[
+    {
+      describe: "回调操作示例代码",
+      source:[
+        'http://xxxily.cc/dispather-app/dispacher\\?method=dispacher'
+      ],
+      // 可选值有：OnBeforeRequest OnPeekAtResponseHeaders OnBeforeResponse OnDone OnReturningError ，想匹配多个事件可以使用|进行分隔
+      onEvent:'OnBeforeRequest',
+      callback:function(oSession,eventName){
+        var t = this;
+        console.log(eventName);
+
+        if(eventName === 'OnBeforeRequest'){
+          var Cookie  = oSession.oRequest['Cookie'];
+          if(Cookie){
+            console.log(Cookie);
+          }else {
+            console.log('没找到对于的 Cookie');
+          }
+          console.log('callbackTest:',oSession.fullUrl);
+          oSession.oRequest['Cookie'] = "aaa";
+        }
+
+      },
+      enabled: false
     }
   ],
 
@@ -240,6 +282,42 @@ if (!alert) {
   var alert = FiddlerObject.alert;
 }
 // 调试方法 END
+
+
+/**
+ * 自动移除禁止项，减少后续逻辑不必要的循环消耗
+ * @param obj 要操作的对象
+ */
+function removeDisableItem(source) {
+  var me = this,
+    result = {}
+  ;
+  if(typeof source != 'object'){
+    return source;
+  }
+  if (Object.prototype.toString.call(source) === '[object Array]') {
+    result = [];
+  }
+  if (Object.prototype.toString.call(source) === '[object Null]') {
+    result = null;
+  }
+  for (var key in source) {
+    if(typeof source[key] === 'object'){
+      /*跳过enabled为false的项目*/
+      if(Object.prototype.toString.call(source[key]) === '[object Object]' && source[key]['enabled'] === false){
+        continue;
+      }else {
+        result[key] = removeDisableItem(source[key])
+      }
+    }else{
+      result[key] = source[key]
+    }
+  }
+  return result;
+}
+
+// 实测 GLOBAL_SETTING 每个请求都要加载一次，所以此优化可能出现反效果，后续如果出现很多enabled为false的配置再开启实测下
+// GLOBAL_SETTING = removeDisableItem(GLOBAL_SETTING);
 
 
 import System;
@@ -601,6 +679,30 @@ class Handlers {
   }
 
   /**
+   * 每个匹配链接的回调操作对象
+   * @param oSession (Session) -必选，Session 对象
+   * @param eventName (String) -必选，回调事件名称 可选值有：OnBeforeRequest OnPeekAtResponseHeaders OnBeforeResponse OnDone OnReturningError
+   */
+  public static function sessionCallback(oSession,eventName) {
+    var callbackAcion = GLOBAL_SETTING.callbackAcion;
+    if (callbackAcion && callbackAcion.length > 0) {
+      var len = callbackAcion.length;
+      for (var i = 0; i < len; i++) {
+        var settingItem = callbackAcion[i];
+
+        /*指定要匹配的事件，减少不必要的回调操作*/
+        var eventPatt = createPattern(settingItem['onEvent'],'i');
+        if (settingItem.enabled && eventPatt.test(eventName)) {
+          settingMatch(oSession.fullUrl, settingItem.source, function (conf, matchStr) {
+            settingItem.callback(oSession,eventName);
+            return true;
+          }, "【callbackAcion】配置出错，请检查你的配置");
+        }
+      }
+    }
+  }
+
+  /**
    * 设置 Session 的界面呈现
    * @param oSession (Session) -必选，Session 对象
    * @param conf (Object) -可选，要设置 Session 呈现的界面配置，形如：{bgColor:"#2c2c2c",color:"#FF0000",bold:true}
@@ -638,6 +740,8 @@ class Handlers {
 
     showLinkCount += 1;
 
+    sessionCallback(oSession,'OnBeforeRequest');
+
     // 过滤出需要显示或隐藏的连接 BEGIN
 
     var showLinks = GLOBAL_SETTING.Filter.showLinks,
@@ -647,7 +751,6 @@ class Handlers {
       hideLink(oSession);
     }, "【showLinks】配置出错，请检查你的配置");
 
-
     // 过滤出要隐藏的连接，把在隐藏列表里的连接隐藏掉
     settingMatch(oSession.fullUrl, hideLinks, function (conf, matchStr) {
       hideLink(oSession);
@@ -656,6 +759,37 @@ class Handlers {
 
     // 过滤出需要显示或隐藏的连接 END
 
+    // 根据头部字段过滤出需要显示或隐藏的连接 BEGIN
+    var headerFilter = GLOBAL_SETTING.Filter.headerFieldFilter;
+    if (headerFilter && headerFilter.length > 0) {
+      var hfLen = headerFilter.length;
+      for (var i = 0; i < hfLen; i++) {
+        var settingItem = headerFilter[i];
+        if (settingItem.enabled === true && settingItem.workAt === 'request' && settingItem.fieldName) {
+          if(settingItem.display === true ){
+            // 过滤出要显示的连接，把不在显示列表里的连接隐藏掉
+            if(oSession.oRequest[settingItem.fieldName]){
+              settingUnMatch(oSession.oRequest[settingItem.fieldName], settingItem.filterList, function () {
+                hideLink(oSession);
+              }, "【headerFieldFilter_show】配置出错，请检查你的配置");
+            }else {
+              /*不存在对于header属值的，不能直接隐藏，只能后续操作，否则会把其关联的链接也一并隐藏，最后就会导致无任何链接可显示*/
+              // hideLink(oSession);
+              // console.log('以下链接本该隐藏的，但是由于具有关联性，不能将其马上隐藏：',oSession.fullUrl);
+              oSession['hide-me'] = 'true';
+            }
+          }else {
+            // 过滤出要隐藏的连接，把在隐藏列表里的连接隐藏掉
+            settingMatch(oSession.oRequest[settingItem.fieldName], settingItem.filterList, function (conf, matchStr) {
+              hideLink(oSession);
+              return true;
+            }, "【headerFieldFilter_hide】配置出错，请检查你的配置");
+          }
+        }
+      }
+    }
+    // 根据头部字段过滤出需要显示或隐藏的连接 END
+
     // 过滤出要禁止缓存的连接
     var disableCachingList = GLOBAL_SETTING.disableCachingList;
     settingMatch(oSession.fullUrl, disableCachingList, function (conf, matchStr) {
@@ -663,6 +797,13 @@ class Handlers {
       return true;
     }, "【disableCachingList】配置出错，请检查你的配置");
 
+
+    // 标注隐藏443链接
+    if(GLOBAL_SETTING.Filter.hideTunnelTo){
+      settingMatch(oSession.fullUrl, [':443'], function () {
+        oSession['hide-me'] = 'true';
+      }, "【hideTunnelTo】配置出错，请检查你的配置");
+    }
 
     // 配色 BEGIN
 
@@ -890,7 +1031,7 @@ class Handlers {
   //
   static function OnPeekAtResponseHeaders(oSession: Session) {
 
-    hideTunnelToLink(oSession);
+    sessionCallback(oSession,'OnPeekAtResponseHeaders');
 
     //FiddlerApplication.Log.LogFormat("Session {0}: Response header peek shows status is {1}", oSession.id, oSession.responseCode);
     if (m_DisableCaching || GLOBAL_SETTING.disableCaching || oSession["disableCaching"]) {
@@ -911,6 +1052,39 @@ class Handlers {
   }
 
   static function OnBeforeResponse(oSession: Session) {
+
+    sessionCallback(oSession,'OnBeforeResponse');
+
+    // 根据头部字段过滤出需要显示或隐藏的连接 BEGIN
+    var headerFilter = GLOBAL_SETTING.Filter.headerFieldFilter;
+    if (headerFilter && headerFilter.length > 0) {
+      var hfLen = headerFilter.length;
+      for (var i = 0; i < hfLen; i++) {
+        var settingItem = headerFilter[i];
+        if (settingItem.enabled === true && settingItem.workAt === 'response' && settingItem.fieldName) {
+          if(settingItem.display === true ){
+            // 过滤出要显示的连接，把不在显示列表里的连接隐藏掉
+            if(oSession.oRequest[settingItem.fieldName]){
+              settingUnMatch(oSession.oResponse[settingItem.fieldName], settingItem.filterList, function () {
+                hideLink(oSession);
+              }, "【headerFieldFilter_show】配置出错，请检查你的配置");
+            }else {
+              /*不存在对于header属值的，不能直接隐藏，只能后续操作，否则会把其关联的链接也一并隐藏，最后就会导致无任何链接可显示*/
+              // hideLink(oSession);
+              // console.log('以下链接本该隐藏的，但是由于具有关联性，不能将其马上隐藏：',oSession.fullUrl);
+              oSession['hide-me'] = 'true';
+            }
+          }else {
+            // 过滤出要隐藏的连接，把在隐藏列表里的连接隐藏掉
+            settingMatch(oSession.oResponse[settingItem.fieldName], settingItem.filterList, function (conf, matchStr) {
+              hideLink(oSession);
+              return true;
+            }, "【headerFieldFilter_hide】配置出错，请检查你的配置");
+          }
+        }
+      }
+    }
+    // 根据头部字段过滤出需要显示或隐藏的连接 END
 
     // 过滤出需要显示或隐藏的连接 BEGIN
 
@@ -965,7 +1139,12 @@ class Handlers {
   // 请求完成时的回调
   static function OnDone(oSession: Session) {
 
-    hideTunnelToLink(oSession);
+    sessionCallback(oSession,'OnDone');
+
+    // 隐藏被标注要隐藏的链接
+    if(oSession['hide-me']){
+      hideLink(oSession);
+    }
 
     // 根据关键字进行搜索查找 BEGIN
 
@@ -1022,6 +1201,8 @@ class Handlers {
    * 链接返回出错时的回调方法
    */
   static function OnReturningError(oSession: Session) {
+
+    sessionCallback(oSession,'OnReturningError');
 
     hideTunnelToLink(oSession);
 
@@ -1086,6 +1267,7 @@ class Handlers {
 
   // The Main() function runs everytime your FiddlerScript compiles
   static function Main() {
+
     var today: Date = new Date();
     FiddlerObject.StatusText = " CustomRules.js was loaded at: " + today;
 

@@ -1,6 +1,6 @@
 ﻿/*!
  * Fiddler CustomRules
- * @Version 1.0.2
+ * @Version 1.0.3
  * @Author xxxily
  * @home https://github.com/xxxily/Fiddler-plus
  * @bugs https://github.com/xxxily/Fiddler-plus/issues
@@ -149,18 +149,67 @@ var GLOBAL_SETTING: Object = {
         webFormsObj['username'] = "testUser";
         webFormsObj['password'] = "testPw";
 
+        /*重设请求参数*/
         oSession.utilSetRequestBody(strConv.stringify(webFormsObj));
       },
       enabled: false
     },
     {
-      describe: "内容注入示例",
+      describe: "本地脚本注入示例",
       source:[
-        ''
+        "xxxily.net.cn",
+        "xxxily.com.cn"
+      ],
+      onEvent:'OnBeforeResponse',
+      callback:function(oSession,eventName){
+
+        /*给HTML页面注入调试脚本*/
+        if ( oSession.oResponse.headers.ExistsAndContains("Content-Type", "text/html") && oSession.utilFindInResponse("</body>", false)>-1 ){
+
+          oSession.utilDecodeResponse();
+          var oBody = System.Text.Encoding.UTF8.GetString(oSession.responseBodyBytes);
+
+          /*在开始处注入脚本*/
+          var oRegEx = /^/i;
+          oBody = oBody.replace(oRegEx, '<script src="./commonInjectForDebug.js"></script>');
+
+          oSession.utilSetResponseBody(oBody);
+        }
+
+        /*将注入的脚本地址内容替换成本地文件，实现本地脚本内容注入*/
+        if( oSession.fullUrl.indexOf('commonInjectForDebug') > -1 ){
+          oSession["x-replywithfile"] ="D:\\work\\debugTools\\commonInject.js";
+        }
+
+      },
+      enabled: true
+    },
+
+    {
+      describe: "签到打卡破解",
+      source:[
+        'https://qy.do1.com.cn/wxqyh/portal/checkworkAction!addsignin.action\\?dqdp_csrf_token='
       ],
       onEvent:'OnBeforeRequest',
       callback:function(oSession,eventName){
-        /*TODO 示例代码待编写*/
+        var webForms = oSession.GetRequestBodyAsString(),
+          strConv = coreApi.strConv,
+          webFormsObj = strConv.parse(webForms);
+
+        webFormsObj['longitude'] = "113.35921826535848";
+        webFormsObj['latitude'] = "23.128247218771186";
+        webFormsObj['address'] = "广东省广州市天河区员村一横路3号";
+
+        // webFormsObj['longitude'] = "113.359192";
+        // webFormsObj['latitude'] = "23.128263";
+        // webFormsObj['address'] = "偏差测试02";
+
+        // webFormsObj['longitude'] = "114.418488";
+        // webFormsObj['latitude'] = "23.132783";
+        // webFormsObj['address'] = "11111111111111111111";
+
+        /*重设参数*/
+        oSession.utilSetRequestBody(strConv.stringify(webFormsObj));
       },
       enabled: false
     }
@@ -400,6 +449,8 @@ function removeDisableItem(source) {
 // GLOBAL_SETTING = removeDisableItem(GLOBAL_SETTING);
 
 
+// .NET Framework API document
+// https://docs.microsoft.com/zh-cn/dotnet/api/index?view=netframework-4.7.2
 import System;
 import System.Windows.Forms;
 import Fiddler;

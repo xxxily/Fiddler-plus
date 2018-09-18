@@ -180,10 +180,11 @@ var GLOBAL_SETTING: Object = {
           oSession.utilDecodeResponse();
           var oBody = System.Text.Encoding.UTF8.GetString(oSession.responseBodyBytes);
 
-          /*在开始处注入脚本*/
-          var oRegEx = /^/i,
+          /*注入到head标签之前*/
+          var oRegEx = /<head>/i,
             scriptList = [
-              '<script src="./commonInjectForDebug.js"></script>'
+              '<script src="./commonInjectForDebug.js"></script>',
+              '\n<head>'
             ];
           oBody = oBody.replace(oRegEx, scriptList.join(''));
 

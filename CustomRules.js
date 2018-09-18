@@ -1,6 +1,6 @@
 ﻿/*!
  * Fiddler CustomRules
- * @Version 1.0.3
+ * @Version 1.0.4
  * @Author xxxily
  * @home https://github.com/xxxily/Fiddler-plus
  * @bugs https://github.com/xxxily/Fiddler-plus/issues
@@ -16,7 +16,7 @@ var GLOBAL_SETTING: Object = {
   disableCaching: false,
   // 自定义禁止缓存列表【针对性禁止缓存，进行项目调试的时候不影响其它网站的上网体验】
   disableCachingList: [
-    // "do1.com.cn|do1.net.cn",
+    "xxxily.com.cn|xxxily.net.cn",
     // 禁止本地所有连接的缓存，包括IP为192段或127段的所有地址
     // "http://localhost|http://192|http://127",
     // "https://localhost|https://192|https://127"
@@ -115,6 +115,11 @@ var GLOBAL_SETTING: Object = {
       source:[
         'http://xxxily.cc/dispather-app/dispacher\\?method=dispacher'
       ],
+      // exclude:[],
+      include:[
+        '.html',
+        '.jsp'
+      ],
       // 可选值有：OnBeforeRequest OnPeekAtResponseHeaders OnBeforeResponse OnDone OnReturningError ，想匹配多个事件可以使用|进行分隔
       onEvent:'OnBeforeRequest',
       callback:function(oSession,eventName){
@@ -160,6 +165,12 @@ var GLOBAL_SETTING: Object = {
         "xxxily.net.cn",
         "xxxily.com.cn"
       ],
+      include:[
+        '.html',
+        '.jsp',
+        'vendor.js',
+        'commonInjectForDebug'
+      ],
       onEvent:'OnBeforeResponse',
       callback:function(oSession,eventName){
 
@@ -170,8 +181,11 @@ var GLOBAL_SETTING: Object = {
           var oBody = System.Text.Encoding.UTF8.GetString(oSession.responseBodyBytes);
 
           /*在开始处注入脚本*/
-          var oRegEx = /^/i;
-          oBody = oBody.replace(oRegEx, '<script src="./commonInjectForDebug.js"></script>');
+          var oRegEx = /^/i,
+            scriptList = [
+              '<script src="./commonInjectForDebug.js"></script>'
+            ];
+          oBody = oBody.replace(oRegEx, scriptList.join(''));
 
           oSession.utilSetResponseBody(oBody);
         }
@@ -183,35 +197,6 @@ var GLOBAL_SETTING: Object = {
 
       },
       enabled: true
-    },
-
-    {
-      describe: "签到打卡破解",
-      source:[
-        'https://qy.do1.com.cn/wxqyh/portal/checkworkAction!addsignin.action\\?dqdp_csrf_token='
-      ],
-      onEvent:'OnBeforeRequest',
-      callback:function(oSession,eventName){
-        var webForms = oSession.GetRequestBodyAsString(),
-          strConv = coreApi.strConv,
-          webFormsObj = strConv.parse(webForms);
-
-        webFormsObj['longitude'] = "113.35921826535848";
-        webFormsObj['latitude'] = "23.128247218771186";
-        webFormsObj['address'] = "广东省广州市天河区员村一横路3号";
-
-        // webFormsObj['longitude'] = "113.359192";
-        // webFormsObj['latitude'] = "23.128263";
-        // webFormsObj['address'] = "偏差测试02";
-
-        // webFormsObj['longitude'] = "114.418488";
-        // webFormsObj['latitude'] = "23.132783";
-        // webFormsObj['address'] = "11111111111111111111";
-
-        /*重设参数*/
-        oSession.utilSetRequestBody(strConv.stringify(webFormsObj));
-      },
-      enabled: false
     }
   ],
 
@@ -320,7 +305,6 @@ var GLOBAL_SETTING: Object = {
 if (!console) {
   var console = {};
   console.log = function (arg1, arg2, arg3, arg4, arg5, arg6) {
-
     // 不支持 arguments ，尴尬！
     var args = [arg1, arg2, arg3, arg4, arg5, arg6];
     var argsLen = 0;
@@ -672,7 +656,7 @@ class Handlers {
    * @param s_str (String) -必选 源字符串
    * @param m_str (String) -必选 需要匹配的字符串
    * @param callback (Function) -必选 匹配成功的回调操作，回调中返回匹配到的字符串、源字符串、需匹配的字符串
-   * @param splitStr (String) -可选 多项分隔符，默认为:,
+   * @param splitStr (String) -可选 多项分隔符，默认为|,
    * @param attributes (String) -可选 匹配修饰符，i,g,m, 默认不添加任何修饰符
    */
   public static function matchPlus(s_str, m_str, callback, splitStr, attributes) {
@@ -680,7 +664,7 @@ class Handlers {
       return false;
     }
     var spStr = splitStr || GLOBAL_SETTING.splitStr || ",",
-      att = attributes || "",
+      att = attributes || GLOBAL_SETTING.regAttr || "",
       regArr = m_str.split(spStr),
       len = regArr.length,
       i = 0,
@@ -815,6 +799,11 @@ class Handlers {
    * @param eventName (String) -必选，回调事件名称 可选值有：OnBeforeRequest OnPeekAtResponseHeaders OnBeforeResponse OnDone OnReturningError
    */
   public static function sessionCallback(oSession,eventName) {
+    if(!oSession || !eventName || !settingMatch){
+      // console.log('出现【未将对象引用设置到对象实例】的错误~');
+      return false;
+    }
+
     var callbackAcion = GLOBAL_SETTING.callbackAcion;
     if (callbackAcion && callbackAcion.length > 0) {
       var len = callbackAcion.length;
@@ -825,7 +814,19 @@ class Handlers {
         var eventPatt = createPattern(settingItem['onEvent'],'i');
         if (settingItem.enabled && eventPatt.test(eventName)) {
           settingMatch(oSession.fullUrl, settingItem.source, function (conf, matchStr) {
-            settingItem.callback(oSession,eventName);
+
+            if(settingItem.include){
+              settingMatch(oSession.fullUrl,settingItem.include,function (conf,matchStr) {
+                settingItem.callback(oSession,eventName);
+              },"【callbackAcion_include】配置出错，请检查你的配置")
+            }else if(settingItem.exclude) {
+              settingUnMatch(oSession.fullUrl,settingItem.include,function (matchStr) {
+                settingItem.callback(oSession,eventName);
+              },"【callbackAcion_exclude】配置出错，请检查你的配置")
+            }else {
+              settingItem.callback(oSession,eventName);
+            }
+
             return true;
           }, "【callbackAcion】配置出错，请检查你的配置");
         }
@@ -871,190 +872,193 @@ class Handlers {
 
     showLinkCount += 1;
 
-    sessionCallback(oSession,'OnBeforeRequest');
+    /*Fiddler有时候会掉链子，所以必须加强判断，才能减少callbackAcion功能的报错提示*/
+    if(settingMatch && settingUnMatch && oSession){
+      sessionCallback && sessionCallback(oSession,'OnBeforeRequest');
 
-    // 过滤出需要显示或隐藏的连接 BEGIN
+      // 过滤出需要显示或隐藏的连接 BEGIN
 
-    var showLinks = GLOBAL_SETTING.Filter.showLinks,
-      hideLinks = GLOBAL_SETTING.Filter.hideLinks;
-    // 过滤出要显示的连接，把不在显示列表里的连接隐藏掉
-    settingUnMatch(oSession.fullUrl, showLinks, function () {
-      hideLink(oSession);
-    }, "【showLinks】配置出错，请检查你的配置");
+      var showLinks = GLOBAL_SETTING.Filter.showLinks,
+        hideLinks = GLOBAL_SETTING.Filter.hideLinks;
+      // 过滤出要显示的连接，把不在显示列表里的连接隐藏掉
+      settingUnMatch(oSession.fullUrl, showLinks, function () {
+        hideLink(oSession);
+      }, "【showLinks】配置出错，请检查你的配置");
 
-    // 过滤出要隐藏的连接，把在隐藏列表里的连接隐藏掉
-    settingMatch(oSession.fullUrl, hideLinks, function (conf, matchStr) {
-      hideLink(oSession);
-      return true;
-    }, "【hideLinks】配置出错，请检查你的配置");
+      // 过滤出要隐藏的连接，把在隐藏列表里的连接隐藏掉
+      settingMatch(oSession.fullUrl, hideLinks, function (conf, matchStr) {
+        hideLink(oSession);
+        return true;
+      }, "【hideLinks】配置出错，请检查你的配置");
 
-    // 过滤出需要显示或隐藏的连接 END
+      // 过滤出需要显示或隐藏的连接 END
 
-    // 根据头部字段过滤出需要显示或隐藏的连接 BEGIN
-    var headerFilter = GLOBAL_SETTING.Filter.headerFieldFilter;
-    if (headerFilter && headerFilter.length > 0) {
-      var hfLen = headerFilter.length;
-      for (var i = 0; i < hfLen; i++) {
-        var settingItem = headerFilter[i];
-        if (settingItem.enabled === true && settingItem.workAt === 'request' && settingItem.fieldName) {
-          if(settingItem.display === true ){
-            // 过滤出要显示的连接，把不在显示列表里的连接隐藏掉
-            if(oSession.oRequest[settingItem.fieldName]){
-              settingUnMatch(oSession.oRequest[settingItem.fieldName], settingItem.filterList, function () {
-                hideLink(oSession);
-              }, "【headerFieldFilter_show】配置出错，请检查你的配置");
+      // 根据头部字段过滤出需要显示或隐藏的连接 BEGIN
+      var headerFilter = GLOBAL_SETTING.Filter.headerFieldFilter;
+      if (headerFilter && headerFilter.length > 0) {
+        var hfLen = headerFilter.length;
+        for (var i = 0; i < hfLen; i++) {
+          var settingItem = headerFilter[i];
+          if (settingItem.enabled === true && settingItem.workAt === 'request' && settingItem.fieldName) {
+            if(settingItem.display === true ){
+              // 过滤出要显示的连接，把不在显示列表里的连接隐藏掉
+              if(oSession.oRequest[settingItem.fieldName]){
+                settingUnMatch(oSession.oRequest[settingItem.fieldName], settingItem.filterList, function () {
+                  hideLink(oSession);
+                }, "【headerFieldFilter_show】配置出错，请检查你的配置");
+              }else {
+                /*不存在对于header属值的，不能直接隐藏，只能后续操作，否则会把其关联的链接也一并隐藏，最后就会导致无任何链接可显示*/
+                // hideLink(oSession);
+                // console.log('以下链接本该隐藏的，但是由于具有关联性，不能将其马上隐藏：',oSession.fullUrl);
+                oSession['hide-me'] = 'true';
+              }
             }else {
-              /*不存在对于header属值的，不能直接隐藏，只能后续操作，否则会把其关联的链接也一并隐藏，最后就会导致无任何链接可显示*/
-              // hideLink(oSession);
-              // console.log('以下链接本该隐藏的，但是由于具有关联性，不能将其马上隐藏：',oSession.fullUrl);
-              oSession['hide-me'] = 'true';
+              // 过滤出要隐藏的连接，把在隐藏列表里的连接隐藏掉
+              settingMatch(oSession.oRequest[settingItem.fieldName], settingItem.filterList, function (conf, matchStr) {
+                hideLink(oSession);
+                return true;
+              }, "【headerFieldFilter_hide】配置出错，请检查你的配置");
             }
-          }else {
-            // 过滤出要隐藏的连接，把在隐藏列表里的连接隐藏掉
-            settingMatch(oSession.oRequest[settingItem.fieldName], settingItem.filterList, function (conf, matchStr) {
-              hideLink(oSession);
-              return true;
-            }, "【headerFieldFilter_hide】配置出错，请检查你的配置");
           }
         }
       }
-    }
-    // 根据头部字段过滤出需要显示或隐藏的连接 END
+      // 根据头部字段过滤出需要显示或隐藏的连接 END
 
-    // 过滤出要禁止缓存的连接
-    var disableCachingList = GLOBAL_SETTING.disableCachingList;
-    settingMatch(oSession.fullUrl, disableCachingList, function (conf, matchStr) {
-      oSession["disableCaching"] = true;
-      return true;
-    }, "【disableCachingList】配置出错，请检查你的配置");
+      // 过滤出要禁止缓存的连接
+      var disableCachingList = GLOBAL_SETTING.disableCachingList;
+      settingMatch(oSession.fullUrl, disableCachingList, function (conf, matchStr) {
+        oSession["disableCaching"] = true;
+        return true;
+      }, "【disableCachingList】配置出错，请检查你的配置");
 
 
-    // 标注隐藏443链接
-    if(GLOBAL_SETTING.Filter.hideTunnelTo){
-      settingMatch(oSession.fullUrl, [':443'], function () {
-        oSession['hide-me'] = 'true';
-      }, "【hideTunnelTo】配置出错，请检查你的配置");
-    }
-
-    // 配色 BEGIN
-
-    if (!oSession["ui-hide"] && GLOBAL_SETTING.UI) {
-      // 默认背景【存在 bgColor_02 时进行交替显示】 注：因为http请求的无序特性，所以不能确保百分百准确交替，待深入优化
-      if (GLOBAL_SETTING.UI.bgColor_02 && (showLinkCount % 2 === 0)) {
-        oSession["ui-backcolor"] = GLOBAL_SETTING.UI.bgColor_02;
-      } else {
-        oSession["ui-backcolor"] = GLOBAL_SETTING.UI.bgColor || "#2c2c2c";
+      // 标注隐藏443链接
+      if(GLOBAL_SETTING.Filter.hideTunnelTo){
+        settingMatch(oSession.fullUrl, [':443'], function () {
+          oSession['hide-me'] = 'true';
+        }, "【hideTunnelTo】配置出错，请检查你的配置");
       }
 
-      // 默认文本颜色
-      oSession["ui-color"] = GLOBAL_SETTING.UI.color;
+      // 配色 BEGIN
 
-      // 根据关键词设置连接渲染的颜色
-      settingMatch(oSession.fullUrl, GLOBAL_SETTING.UI.linkColor, function (conf, matchStr) {
-        conf ? oSession["ui-color"] = conf : "";
-      }, "【linkColor】配置出错，请检查你的配置");
+      if (!oSession["ui-hide"] && GLOBAL_SETTING.UI) {
+        // 默认背景【存在 bgColor_02 时进行交替显示】 注：因为http请求的无序特性，所以不能确保百分百准确交替，待深入优化
+        if (GLOBAL_SETTING.UI.bgColor_02 && (showLinkCount % 2 === 0)) {
+          oSession["ui-backcolor"] = GLOBAL_SETTING.UI.bgColor_02;
+        } else {
+          oSession["ui-backcolor"] = GLOBAL_SETTING.UI.bgColor || "#2c2c2c";
+        }
 
-      // 高亮特殊连接
-      settingMatch(oSession.fullUrl, GLOBAL_SETTING.UI.highlight, function (conf, matchStr) {
-        setSessionDisplay(oSession, conf);
-      }, "【highlight】配置出错，请检查你的配置");
-    }
+        // 默认文本颜色
+        oSession["ui-color"] = GLOBAL_SETTING.UI.color;
 
-    if (!oSession["ui-hide"] && GLOBAL_SETTING.skin) {
-      var skins = GLOBAL_SETTING.skin,
-        skLen = skins.length;
-      for (var i = 0; i < skLen; i++) {
-        var skin = skins[i];
-        if (skin.enable === true) {
-          //
+        // 根据关键词设置连接渲染的颜色
+        settingMatch(oSession.fullUrl, GLOBAL_SETTING.UI.linkColor, function (conf, matchStr) {
+          conf ? oSession["ui-color"] = conf : "";
+        }, "【linkColor】配置出错，请检查你的配置");
+
+        // 高亮特殊连接
+        settingMatch(oSession.fullUrl, GLOBAL_SETTING.UI.highlight, function (conf, matchStr) {
+          setSessionDisplay(oSession, conf);
+        }, "【highlight】配置出错，请检查你的配置");
+      }
+
+      if (!oSession["ui-hide"] && GLOBAL_SETTING.skin) {
+        var skins = GLOBAL_SETTING.skin,
+          skLen = skins.length;
+        for (var i = 0; i < skLen; i++) {
+          var skin = skins[i];
+          if (skin.enable === true) {
+            //
+          }
         }
       }
-    }
 
-    // 配色 END
+      // 配色 END
 
-    // 接管替换URL BEGIN
+      // 接管替换URL BEGIN
 
-    // 简单替换
-    settingMatch(oSession.fullUrl, GLOBAL_SETTING.replace, function (conf, matchStr) {
-      // System.Text.RegularExpressions.Regex.IsMatch(oSession.fullUrl, "https://" );
-      oSession.fullUrl = System.Text.RegularExpressions.Regex.Replace(oSession.fullUrl, matchStr, conf);
-    }, "【replace】配置出错，请检查你的配置");
+      // 简单替换
+      settingMatch(oSession.fullUrl, GLOBAL_SETTING.replace, function (conf, matchStr) {
+        // System.Text.RegularExpressions.Regex.IsMatch(oSession.fullUrl, "https://" );
+        oSession.fullUrl = System.Text.RegularExpressions.Regex.Replace(oSession.fullUrl, matchStr, conf);
+      }, "【replace】配置出错，请检查你的配置");
 
-    // 高级替换
-    var replacePlus = GLOBAL_SETTING.replacePlus;
-    if (replacePlus && replacePlus.length > 0) {
-      var rpLen = replacePlus.length;
-      for (var i = 0; i < rpLen; i++) {
-        var rpSettingItem = replacePlus[i];
-        if (rpSettingItem.enabled === true && rpSettingItem.replaceWith) {
-          settingMatch(oSession.fullUrl, rpSettingItem.source, function (conf, matchStr) {
-            // 执行替换操作
-            var execReplace = function () {
-              var newUrl = System.Text.RegularExpressions.Regex.Replace(oSession.fullUrl, matchStr, rpSettingItem.replaceWith);
-              oSession.fullUrl = newUrl;
-              setSessionDisplay(oSession, rpSettingItem);
-              rpSettingItem.disableCaching ? oSession["disableCaching"] = true : "";
+      // 高级替换
+      var replacePlus = GLOBAL_SETTING.replacePlus;
+      if (replacePlus && replacePlus.length > 0) {
+        var rpLen = replacePlus.length;
+        for (var i = 0; i < rpLen; i++) {
+          var rpSettingItem = replacePlus[i];
+          if (rpSettingItem.enabled === true && rpSettingItem.replaceWith) {
+            settingMatch(oSession.fullUrl, rpSettingItem.source, function (conf, matchStr) {
+              // 执行替换操作
+              var execReplace = function () {
+                var newUrl = System.Text.RegularExpressions.Regex.Replace(oSession.fullUrl, matchStr, rpSettingItem.replaceWith);
+                oSession.fullUrl = newUrl;
+                setSessionDisplay(oSession, rpSettingItem);
+                rpSettingItem.disableCaching ? oSession["disableCaching"] = true : "";
 
-              if (rpSettingItem.setRequestHeaders) {
-                for (var key in rpSettingItem.setRequestHeaders) {
-                  oSession.RequestHeaders[key] = rpSettingItem.setRequestHeaders[key];
+                if (rpSettingItem.setRequestHeaders) {
+                  for (var key in rpSettingItem.setRequestHeaders) {
+                    oSession.RequestHeaders[key] = rpSettingItem.setRequestHeaders[key];
+                  }
                 }
-              }
 
-              if (rpSettingItem.confId && rpSettingItem.confId === "0001") {
-                // oSession.oRequest["Pragma"] = "no-cache";
-                // oSession.oRequest["Cookie"] = "noCookie=123456;kkk=osdkjksdf";
-                // oSession.oRequest["Referer"] = "http://xxxily.cc/";
-                // oSession.RequestHeaders["Referer"] = "http://xxxily.cc/";
-                // oSession.RequestHeaders["Cookie123213"] = "http://xxxily.cc/";
-                // console.log(oSession.RequestHeaders["Referer"]);
-              }
-            };
+                if (rpSettingItem.confId && rpSettingItem.confId === "0001") {
+                  // oSession.oRequest["Pragma"] = "no-cache";
+                  // oSession.oRequest["Cookie"] = "noCookie=123456;kkk=osdkjksdf";
+                  // oSession.oRequest["Referer"] = "http://xxxily.cc/";
+                  // oSession.RequestHeaders["Referer"] = "http://xxxily.cc/";
+                  // oSession.RequestHeaders["Cookie123213"] = "http://xxxily.cc/";
+                  // console.log(oSession.RequestHeaders["Referer"]);
+                }
+              };
 
-            if (rpSettingItem.urlContain || rpSettingItem.urlUnContain) {
-              // 进行二级匹配
+              if (rpSettingItem.urlContain || rpSettingItem.urlUnContain) {
+                // 进行二级匹配
 
-              settingMatch(oSession.fullUrl, rpSettingItem.urlContain, function (matchStr02) {
+                settingMatch(oSession.fullUrl, rpSettingItem.urlContain, function (matchStr02) {
+                  execReplace();
+                }, "【replacePlus里面的urlContain】配置出错，请检查你的配置");
+
+                settingUnMatch(oSession.fullUrl, rpSettingItem.urlUnContain, function (matchStr02) {
+                  execReplace();
+                }, "【replacePlus里面的urlUnContain】配置出错，请检查你的配置");
+
+              } else {
                 execReplace();
-              }, "【replacePlus里面的urlContain】配置出错，请检查你的配置");
-
-              settingUnMatch(oSession.fullUrl, rpSettingItem.urlUnContain, function (matchStr02) {
-                execReplace();
-              }, "【replacePlus里面的urlUnContain】配置出错，请检查你的配置");
-
-            } else {
-              execReplace();
-            }
-          }, "【replacePlus】配置出错，请检查你的配置");
-        }
-      }
-    }
-
-    // 接管替换URL END
-
-    // 根据关键字进行搜索查找 BEGIN
-    var searchInRequestHeaders = GLOBAL_SETTING.Search.inRequestHeaders,
-      searchStrCount = searchInRequestHeaders.length;
-    for (var i = 0; i < searchStrCount; i++) {
-      var skw = searchInRequestHeaders[i];
-      try {
-        var reqHeaders = oSession.RequestHeaders;
-        if (reqHeaders) {
-          for (var key = "" in reqHeaders) {
-
-            var result01 = isMatch(reqHeaders[key], skw);
-            var result02 = isMatch(key, skw);
-            if (result01 || result02) {
-              console.log(oSession.fullUrl, "进行RequestHeaders搜索查找时找到匹配的字符串：" + skw, key + ":" + reqHeaders[key]);
-            }
+              }
+            }, "【replacePlus】配置出错，请检查你的配置");
           }
         }
-      } catch (ex) {
-        console.log("进行RequestHeaders遍历搜索时出错,当前搜索关键词为：" + skw);
       }
+
+      // 接管替换URL END
+
+      // 根据关键字进行搜索查找 BEGIN
+      var searchInRequestHeaders = GLOBAL_SETTING.Search.inRequestHeaders,
+        searchStrCount = searchInRequestHeaders.length;
+      for (var i = 0; i < searchStrCount; i++) {
+        var skw = searchInRequestHeaders[i];
+        try {
+          var reqHeaders = oSession.RequestHeaders;
+          if (reqHeaders) {
+            for (var key = "" in reqHeaders) {
+
+              var result01 = isMatch(reqHeaders[key], skw);
+              var result02 = isMatch(key, skw);
+              if (result01 || result02) {
+                console.log(oSession.fullUrl, "进行RequestHeaders搜索查找时找到匹配的字符串：" + skw, key + ":" + reqHeaders[key]);
+              }
+            }
+          }
+        } catch (ex) {
+          console.log("进行RequestHeaders遍历搜索时出错,当前搜索关键词为：" + skw);
+        }
+      }
+      // 根据关键字进行搜索查找 END
     }
-    // 根据关键字进行搜索查找 END
 
     // Sample Rule: Color ASPX requests in RED
     // if (oSession.uriContains(".aspx")) {	oSession["ui-color"] = "red";	}
@@ -1162,7 +1166,9 @@ class Handlers {
   //
   static function OnPeekAtResponseHeaders(oSession: Session) {
 
-    sessionCallback(oSession,'OnPeekAtResponseHeaders');
+    if(settingMatch && settingUnMatch && oSession){
+      sessionCallback && sessionCallback(oSession,'OnPeekAtResponseHeaders');
+    }
 
     //FiddlerApplication.Log.LogFormat("Session {0}: Response header peek shows status is {1}", oSession.id, oSession.responseCode);
     if (m_DisableCaching || GLOBAL_SETTING.disableCaching || oSession["disableCaching"]) {
@@ -1184,80 +1190,82 @@ class Handlers {
 
   static function OnBeforeResponse(oSession: Session) {
 
-    sessionCallback(oSession,'OnBeforeResponse');
+    if(settingMatch && settingUnMatch && oSession){
+      sessionCallback && sessionCallback(oSession,'OnBeforeResponse');
 
-    // 根据头部字段过滤出需要显示或隐藏的连接 BEGIN
-    var headerFilter = GLOBAL_SETTING.Filter.headerFieldFilter;
-    if (headerFilter && headerFilter.length > 0) {
-      var hfLen = headerFilter.length;
-      for (var i = 0; i < hfLen; i++) {
-        var settingItem = headerFilter[i];
-        if (settingItem.enabled === true && settingItem.workAt === 'response' && settingItem.fieldName) {
-          if(settingItem.display === true ){
-            // 过滤出要显示的连接，把不在显示列表里的连接隐藏掉
-            if(oSession.oRequest[settingItem.fieldName]){
-              settingUnMatch(oSession.oResponse[settingItem.fieldName], settingItem.filterList, function () {
-                hideLink(oSession);
-              }, "【headerFieldFilter_show】配置出错，请检查你的配置");
+      // 根据头部字段过滤出需要显示或隐藏的连接 BEGIN
+      var headerFilter = GLOBAL_SETTING.Filter.headerFieldFilter;
+      if (headerFilter && headerFilter.length > 0) {
+        var hfLen = headerFilter.length;
+        for (var i = 0; i < hfLen; i++) {
+          var settingItem = headerFilter[i];
+          if (settingItem.enabled === true && settingItem.workAt === 'response' && settingItem.fieldName) {
+            if(settingItem.display === true ){
+              // 过滤出要显示的连接，把不在显示列表里的连接隐藏掉
+              if(oSession.oRequest[settingItem.fieldName]){
+                settingUnMatch(oSession.oResponse[settingItem.fieldName], settingItem.filterList, function () {
+                  hideLink(oSession);
+                }, "【headerFieldFilter_show】配置出错，请检查你的配置");
+              }else {
+                /*不存在对于header属值的，不能直接隐藏，只能后续操作，否则会把其关联的链接也一并隐藏，最后就会导致无任何链接可显示*/
+                // hideLink(oSession);
+                // console.log('以下链接本该隐藏的，但是由于具有关联性，不能将其马上隐藏：',oSession.fullUrl);
+                oSession['hide-me'] = 'true';
+              }
             }else {
-              /*不存在对于header属值的，不能直接隐藏，只能后续操作，否则会把其关联的链接也一并隐藏，最后就会导致无任何链接可显示*/
-              // hideLink(oSession);
-              // console.log('以下链接本该隐藏的，但是由于具有关联性，不能将其马上隐藏：',oSession.fullUrl);
-              oSession['hide-me'] = 'true';
+              // 过滤出要隐藏的连接，把在隐藏列表里的连接隐藏掉
+              settingMatch(oSession.oResponse[settingItem.fieldName], settingItem.filterList, function (conf, matchStr) {
+                hideLink(oSession);
+                return true;
+              }, "【headerFieldFilter_hide】配置出错，请检查你的配置");
             }
-          }else {
-            // 过滤出要隐藏的连接，把在隐藏列表里的连接隐藏掉
-            settingMatch(oSession.oResponse[settingItem.fieldName], settingItem.filterList, function (conf, matchStr) {
-              hideLink(oSession);
-              return true;
-            }, "【headerFieldFilter_hide】配置出错，请检查你的配置");
           }
         }
       }
-    }
-    // 根据头部字段过滤出需要显示或隐藏的连接 END
+      // 根据头部字段过滤出需要显示或隐藏的连接 END
 
-    // 过滤出需要显示或隐藏的连接 BEGIN
+      // 过滤出需要显示或隐藏的连接 BEGIN
 
-    var contentType = oSession.oResponse["Content-Type"],
-      showContentType = GLOBAL_SETTING.Filter.showContentType,
-      hideContentType = GLOBAL_SETTING.Filter.hideContentType;
+      var contentType = oSession.oResponse["Content-Type"],
+        showContentType = GLOBAL_SETTING.Filter.showContentType,
+        hideContentType = GLOBAL_SETTING.Filter.hideContentType;
 
-    //开启了 ContentType 过滤的时候， 把不带 Content-Type 全部过滤掉
-    if (!contentType && showContentType.length > 0) {
-      console.log("隐藏不带 ContentType 的连接");
-      hideLink(oSession);
-    }
+      //开启了 ContentType 过滤的时候， 把不带 Content-Type 全部过滤掉
+      if (!contentType && showContentType.length > 0) {
+        console.log("隐藏不带 ContentType 的连接");
+        hideLink(oSession);
+      }
 
-    // 过滤出要显示的连接，把不在显示列表里的连接隐藏掉
-    settingUnMatch(contentType, showContentType, function () {
-      hideLink(oSession);
-    }, "【showContentType】配置出错，请检查你的配置");
+      // 过滤出要显示的连接，把不在显示列表里的连接隐藏掉
+      settingUnMatch(contentType, showContentType, function () {
+        hideLink(oSession);
+      }, "【showContentType】配置出错，请检查你的配置");
 
-    // 过滤出要隐藏的连接，把在隐藏列表里的连接隐藏掉
-    settingMatch(contentType, hideContentType, function (conf, matchStr) {
-      hideLink(oSession);
-      return true;
-    }, "【hideContentType】配置出错，请检查你的配置");
+      // 过滤出要隐藏的连接，把在隐藏列表里的连接隐藏掉
+      settingMatch(contentType, hideContentType, function (conf, matchStr) {
+        hideLink(oSession);
+        return true;
+      }, "【hideContentType】配置出错，请检查你的配置");
 
-    // 过滤出需要显示或隐藏的连接 END
+      // 过滤出需要显示或隐藏的连接 END
 
-    // 根据contentType显示连接颜色
-    var contentTypeColor = GLOBAL_SETTING.UI.contentTypeColor;
-    if (oSession.responseCode > 100 && oSession.responseCode < 300) {
-      settingMatch(contentType, contentTypeColor, function (conf, matchStr) {
+      // 根据contentType显示连接颜色
+      var contentTypeColor = GLOBAL_SETTING.UI.contentTypeColor;
+      if (oSession.responseCode > 100 && oSession.responseCode < 300) {
+        settingMatch(contentType, contentTypeColor, function (conf, matchStr) {
+          conf ? oSession["ui-color"] = conf : "";
+          return true;
+        }, "【contentTypeColor】配置出错，请检查你的配置");
+      }
+
+      // 根据不同状态码设置链接颜色
+      var statusCode = GLOBAL_SETTING.UI.statusCode;
+      settingMatch(oSession.responseCode, statusCode, function (conf, matchStr) {
+        oSession["ui-color"] = GLOBAL_SETTING.UI.color;
         conf ? oSession["ui-color"] = conf : "";
         return true;
-      }, "【contentTypeColor】配置出错，请检查你的配置");
+      }, "【statusCode】配置出错，请检查你的配置");
     }
-
-    // 根据不同状态码设置链接颜色
-    var statusCode = GLOBAL_SETTING.UI.statusCode;
-    settingMatch(oSession.responseCode, statusCode, function (conf, matchStr) {
-      oSession["ui-color"] = GLOBAL_SETTING.UI.color;
-      conf ? oSession["ui-color"] = conf : "";
-      return true;
-    }, "【statusCode】配置出错，请检查你的配置");
 
     if (m_Hide304s && oSession.responseCode == 304) {
       oSession["ui-hide"] = "true";
@@ -1270,55 +1278,57 @@ class Handlers {
   // 请求完成时的回调
   static function OnDone(oSession: Session) {
 
-    sessionCallback(oSession,'OnDone');
+    if(settingMatch && settingUnMatch && oSession){
+      sessionCallback && sessionCallback(oSession,'OnDone');
 
-    // 隐藏被标注要隐藏的链接
-    if(oSession['hide-me']){
-      hideLink(oSession);
-    }
+      // 隐藏被标注要隐藏的链接
+      if(oSession['hide-me']){
+        hideLink(oSession);
+      }
 
-    // 根据关键字进行搜索查找 BEGIN
+      // 根据关键字进行搜索查找 BEGIN
 
-    // 查找ResponseHeaders
-    var searchInResponseHeaders = GLOBAL_SETTING.Search.inResponseHeaders,
-      searchStrCount = searchInResponseHeaders.length;
-    for (var i = 0; i < searchStrCount; i++) {
-      var skw = searchInResponseHeaders[i];
-      try {
-        var resHeaders = oSession.ResponseHeaders;
-        if (resHeaders) {
-          for (var key = "" in resHeaders) {
+      // 查找ResponseHeaders
+      var searchInResponseHeaders = GLOBAL_SETTING.Search.inResponseHeaders,
+        searchStrCount = searchInResponseHeaders.length;
+      for (var i = 0; i < searchStrCount; i++) {
+        var skw = searchInResponseHeaders[i];
+        try {
+          var resHeaders = oSession.ResponseHeaders;
+          if (resHeaders) {
+            for (var key = "" in resHeaders) {
 
-            var result01 = isMatch(resHeaders[key], skw);
-            var result02 = isMatch(key, skw);
-            if (result01 || result02) {
-              console.log(oSession.fullUrl, "进行ResponseHeaders搜索查找时找到匹配的字符串：" + skw, key + ":" + resHeaders[key]);
+              var result01 = isMatch(resHeaders[key], skw);
+              var result02 = isMatch(key, skw);
+              if (result01 || result02) {
+                console.log(oSession.fullUrl, "进行ResponseHeaders搜索查找时找到匹配的字符串：" + skw, key + ":" + resHeaders[key]);
+              }
             }
           }
-        }
-      } catch (ex) {
-        console.log("进行ResponseHeaders遍历搜索时出错,当前搜索关键词为：" + skw);
-      }
-    }
-
-    // 查找ResponseBody
-    var searchInResponseBody = GLOBAL_SETTING.Search.inResponseBody,
-      searchStrCount = searchInResponseBody.length;
-    if (searchStrCount > 0) {
-      var resBody = oSession.GetResponseBodyAsString();
-      for (var i = 0; i < searchStrCount; i++) {
-        var skw = searchInResponseBody[i];
-        try {
-          if (isMatch(resBody, skw)) {
-            console.log(oSession.fullUrl, "进行ResponseBody搜索查找时找到匹配的字符串：" + skw);
-          }
         } catch (ex) {
-          console.log("进行ResponseBody遍历搜索时出错,当前搜索关键词为：" + skw);
+          console.log("进行ResponseHeaders遍历搜索时出错,当前搜索关键词为：" + skw);
         }
       }
-    }
 
-    // 根据关键字进行搜索查找 END
+      // 查找ResponseBody
+      var searchInResponseBody = GLOBAL_SETTING.Search.inResponseBody,
+        searchStrCount = searchInResponseBody.length;
+      if (searchStrCount > 0) {
+        var resBody = oSession.GetResponseBodyAsString();
+        for (var i = 0; i < searchStrCount; i++) {
+          var skw = searchInResponseBody[i];
+          try {
+            if (isMatch(resBody, skw)) {
+              console.log(oSession.fullUrl, "进行ResponseBody搜索查找时找到匹配的字符串：" + skw);
+            }
+          } catch (ex) {
+            console.log("进行ResponseBody遍历搜索时出错,当前搜索关键词为：" + skw);
+          }
+        }
+      }
+
+      // 根据关键字进行搜索查找 END
+    }
 
     // 通过QuickExec 输入字符串来筛选出要高亮的url
     if ((null != filter_and_highlight_url) && isMatch(oSession.GetResponseBodyAsString(), filter_and_highlight_url)) {
@@ -1333,9 +1343,11 @@ class Handlers {
    */
   static function OnReturningError(oSession: Session) {
 
-    sessionCallback(oSession,'OnReturningError');
+    if(settingMatch && settingUnMatch && oSession){
+      sessionCallback && sessionCallback(oSession,'OnReturningError');
 
-    hideTunnelToLink(oSession);
+      hideTunnelToLink(oSession);
+    }
 
     // 出错时的颜色配置
     var onErrorConf = GLOBAL_SETTING.UI.onError;

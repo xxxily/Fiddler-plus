@@ -85,3 +85,71 @@
 
 
 
+## oSession.oRequest.headers 对象
+* HTTPMethod:System.String
+* HTTPVersion:System.String
+* Item:Fiddler.HTTPHeaderItem
+* Item:System.String
+* RawPath:System.Byte[]
+* RequestPath:System.String
+* UriScheme:System.String
+* UriUserInfo:System.String
+* Add(sHeaderName sValue )
+* AssignFromString(sHeaders )
+* Count()
+* Exists(sHeaderName )
+* ExistsAndContains(sHeaderName sHeaderValue )
+* ExistsAndEquals(sHeaderName sHeaderValue )
+* ExistsAny(sHeaderNames )
+* GetTokenValue(sHeaderName sTokenName )
+* Remove(sHeaderName )
+* RemoveRange(arrToRemove )
+* RenameHeaderItems(sOldHeaderName sNewHeaderName )
+* ToByteArray(prependVerbLine appendEmptyLine includeProtocolInPath )
+* ToByteArray(prependVerbLine appendEmptyLine includeProtocolInPath sVerbLineHost )
+* ToString()
+* ToString(prependVerbLine appendEmptyLine )
+* ToString(prependVerbLine appendEmptyLine includeProtocolAndHostInPath )
+
+## oSession.oResponse.headers 对象
+* HTTPResponseCode:System.Int32
+* HTTPResponseStatus:System.String
+* HTTPVersion:System.String
+* Item:Fiddler.HTTPHeaderItem
+* Item:System.String
+* StatusDescription:System.String
+* Add(sHeaderName sValue )
+* AssignFromString(sHeaders )
+* Count()
+* Exists(sHeaderName )
+* ExistsAndContains(sHeaderName sHeaderValue )
+* ExistsAndEquals(sHeaderName sHeaderValue )
+* ExistsAny(sHeaderNames )
+* GetTokenValue(sHeaderName sTokenName )
+* Remove(sHeaderName )
+* RemoveRange(arrToRemove )
+* RenameHeaderItems(sOldHeaderName sNewHeaderName )
+* ToByteArray(prependStatusLine appendEmptyLine )
+* ToString()
+* ToString(prependStatusLine appendEmptyLine )
+
+
+## FiddlerObject 对象
+* FileExtension:System.String
+* Language:Fiddler.ScriptLanguage
+* StatusText:System.String
+* UI:Fiddler.frmViewer
+* alert(sMessage )
+* createDictionary()
+* flashWindow()
+* log(sMessage )
+* playSound(sSoundname )
+* prompt(sMessage )
+* prompt(sMessage sDefaultValue )
+* prompt(sMessage sDefaultValue sWindowTitle )
+* ReloadScript()
+* uiInvoke(oMI )
+* uiInvokeAsync(oMI args )
+* utilIssueRequest(sRequest )
+* WatchPreference(sPref oFN )
+

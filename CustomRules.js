@@ -87,6 +87,10 @@ var GLOBAL_SETTING: Object = {
         "http://xxxily.ac.cn",
         "http://xxxily.cc"
       ],
+      /*Referer限定，方便精确控制*/
+      Referer:[
+        '\\w*.html'
+      ],
       urlContain:"\\.html|\\.css|\\.js|\\.jpeg|\\.jpg|\\.png|\\.gif|\\.mp4|\\.flv|\\.webp",
       replaceWith:"http://localhost:3000",
       enabled:false
@@ -1000,36 +1004,47 @@ class Handlers {
                 setSessionDisplay(oSession, rpSettingItem);
                 rpSettingItem.disableCaching ? oSession["disableCaching"] = true : "";
 
-                if (rpSettingItem.setRequestHeaders) {
-                  for (var key in rpSettingItem.setRequestHeaders) {
-                    oSession.RequestHeaders[key] = rpSettingItem.setRequestHeaders[key];
-                  }
-                }
-
-                if (rpSettingItem.confId && rpSettingItem.confId === "0001") {
-                  // oSession.oRequest["Pragma"] = "no-cache";
-                  // oSession.oRequest["Cookie"] = "noCookie=123456;kkk=osdkjksdf";
-                  // oSession.oRequest["Referer"] = "http://xxxily.cc/";
-                  // oSession.RequestHeaders["Referer"] = "http://xxxily.cc/";
-                  // oSession.RequestHeaders["Cookie123213"] = "http://xxxily.cc/";
-                  // console.log(oSession.RequestHeaders["Referer"]);
-                }
               };
 
-              if (rpSettingItem.urlContain || rpSettingItem.urlUnContain) {
-                // 进行二级匹配
+              var hasPassCheck = true ;
 
-                settingMatch(oSession.fullUrl, rpSettingItem.urlContain, function (matchStr02) {
-                  execReplace();
+              // Referer限定
+              if(hasPassCheck && rpSettingItem.Referer && rpSettingItem.Referer.length > 0){
+
+                if(!oSession.oRequest['Referer']){
+                  hasPassCheck = false;
+                }
+
+                /*让把请求页面通过限定，才能往下玩*/
+                settingMatch(oSession.fullUrl, rpSettingItem.Referer, function (matchStr02) {
+                  hasPassCheck = true;
+                }, "【replacePlus里面的Referer】配置出错，请检查你的配置");
+
+                if(!hasPassCheck){
+                  settingUnMatch(oSession.oRequest['Referer'], rpSettingItem.Referer, function (matchStr02) {
+                    hasPassCheck = false;
+                  }, "【replacePlus里面的Referer】配置出错，请检查你的配置");
+                }
+              }
+
+              // urlContain限定
+              if(hasPassCheck && rpSettingItem.urlContain && rpSettingItem.urlContain.length > 0){
+                settingUnMatch(oSession.fullUrl, rpSettingItem.urlContain, function (matchStr02) {
+                  hasPassCheck = false;
                 }, "【replacePlus里面的urlContain】配置出错，请检查你的配置");
+              }
 
-                settingUnMatch(oSession.fullUrl, rpSettingItem.urlUnContain, function (matchStr02) {
-                  execReplace();
-                }, "【replacePlus里面的urlUnContain】配置出错，请检查你的配置");
+              // urlUnContain限定
+              if(hasPassCheck && rpSettingItem.urlUnContain && rpSettingItem.urlUnContain.length > 0){
+                settingMatch(oSession.fullUrl, rpSettingItem.urlUnContain, function (matchStr02) {
+                  hasPassCheck = false;
+                }, "【replacePlus里面的urlContain】配置出错，请检查你的配置");
+              }
 
-              } else {
+              if(hasPassCheck){
                 execReplace();
               }
+
             }, "【replacePlus】配置出错，请检查你的配置");
           }
         }

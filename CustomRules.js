@@ -1015,16 +1015,15 @@ class Handlers {
                   hasPassCheck = false;
                 }
 
-                /*让把请求页面通过限定，才能往下玩*/
+                settingUnMatch(oSession.oRequest['Referer'], rpSettingItem.Referer, function (matchStr02) {
+                  hasPassCheck = false;
+                }, "【replacePlus里面的Referer】配置出错，请检查你的配置");
+
+                /*让请求页面通过限定，才能往下玩*/
                 settingMatch(oSession.fullUrl, rpSettingItem.Referer, function (matchStr02) {
                   hasPassCheck = true;
                 }, "【replacePlus里面的Referer】配置出错，请检查你的配置");
 
-                if(!hasPassCheck){
-                  settingUnMatch(oSession.oRequest['Referer'], rpSettingItem.Referer, function (matchStr02) {
-                    hasPassCheck = false;
-                  }, "【replacePlus里面的Referer】配置出错，请检查你的配置");
-                }
               }
 
               // urlContain限定

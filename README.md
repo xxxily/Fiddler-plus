@@ -87,6 +87,10 @@ var GLOBAL_SETTING:Object = {
                 "http://xxxily.ac.cn",
                 "http://xxxily.cc"
             ],
+            /*Referer限定，方便精确控制*/
+	        Referer:[
+	            '\\w*.html'
+	        ],
             urlContain:"\\.html|\\.css|\\.js|\\.jpeg|\\.jpg|\\.png|\\.gif|\\.mp4|\\.flv|\\.webp",
             replaceWith:"http://localhost:3000",
             enabled:false
@@ -105,6 +109,99 @@ var GLOBAL_SETTING:Object = {
             // bold:"true",
             replaceWith:"http://xxxily.cc/",
             enabled:false
+        }
+    ],
+
+    // 注意：如果匹配的链接过多，很容易导致：数组下标超限/未将对象应用设置到对象实例等错误弹窗提示
+    callbackAcion:[
+        {
+          describe: "回调操作示例代码",
+          source:[
+            'http://xxxily.cc/dispather-app/dispacher\\?method=dispacher'
+          ],
+          // exclude:[],
+          include:[
+            '.html',
+            '.jsp'
+          ],
+          // 可选值有：OnBeforeRequest OnPeekAtResponseHeaders OnBeforeResponse OnDone OnReturningError ，想匹配多个事件可以使用|进行分隔
+          onEvent:'OnBeforeRequest',
+          callback:function(oSession,eventName){
+            var t = this;
+            console.log(eventName);
+
+            if(eventName === 'OnBeforeRequest'){
+              var Cookie  = oSession.oRequest['Cookie'];
+              if(Cookie){
+                console.log(Cookie);
+              }else {
+                console.log('没找到对于的 Cookie');
+              }
+              console.log('callbackTest:',oSession.fullUrl);
+              oSession.oRequest['Cookie'] = "aaa";
+            }
+
+          },
+          enabled: false
+        },
+        {
+          describe: "篡改登录信息示例",
+          source:[
+            'https://xxxily.cc/portal/userLoginAction!checkUser.action'
+          ],
+          onEvent:'OnBeforeRequest',
+          callback:function(oSession,eventName){
+            var webForms = oSession.GetRequestBodyAsString(),
+              strConv = coreApi.strConv,
+              webFormsObj = strConv.parse(webForms);
+
+            webFormsObj['username'] = "testUser";
+            webFormsObj['password'] = "testPw";
+
+            /*重设请求参数*/
+            oSession.utilSetRequestBody(strConv.stringify(webFormsObj));
+          },
+          enabled: false
+        },
+        {
+          describe: "本地脚本注入示例",
+          source:[
+            "xxxily.net.cn",
+            "xxxily.com.cn"
+          ],
+          include:[
+            '.html',
+            '.jsp',
+            'vendor.js',
+            'commonInjectForDebug'
+          ],
+          onEvent:'OnBeforeResponse',
+          callback:function(oSession,eventName){
+
+            /*给HTML页面注入调试脚本*/
+            if ( oSession.oResponse.headers.ExistsAndContains("Content-Type", "text/html") && oSession.utilFindInResponse("</body>", false)>-1 ){
+
+              oSession.utilDecodeResponse();
+              var oBody = System.Text.Encoding.UTF8.GetString(oSession.responseBodyBytes);
+
+              /*注入到head标签之前*/
+              var oRegEx = /<head>/i,
+                scriptList = [
+                  '<script src="./commonInjectForDebug.js"></script>',
+                  '\n<head>'
+                ];
+              oBody = oBody.replace(oRegEx, scriptList.join(''));
+
+              oSession.utilSetResponseBody(oBody);
+            }
+
+            /*将注入的脚本地址内容替换成本地文件，实现本地脚本内容注入*/
+            if( oSession.fullUrl.indexOf('commonInjectForDebug') > -1 ){
+              oSession["x-replywithfile"] ="D:\\work\\debugTools\\commonInject.js";
+            }
+
+          },
+          enabled: true
         }
     ],
 

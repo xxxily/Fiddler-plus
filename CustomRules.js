@@ -87,7 +87,7 @@ var GLOBAL_SETTING: Object = {
         "http://xxxily.ac.cn",
         "http://xxxily.cc"
       ],
-      /*Referer限定，方便精确控制*/
+      /*Referer限定，方便精确控制【注意：Referer限定会导致只能在当前限定页面下查看后续链接，否则会不能正常代理】*/
       Referer:[
         '\\w*.html'
       ],

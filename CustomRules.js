@@ -75,7 +75,8 @@ var GLOBAL_SETTING: Object = {
   // 替换URL【可用于多环境切换、解决跨域、快速调试线上脚本等】
   replace:{
     "http://xxxily.com/":"http://xxxily.cc/",
-    "":""
+    /*替换成本地某个对应目录下的文件*/
+    "http://xxxily.com/m":"D:\\work\\"
   },
   // 替换URL的高级版，可以实现多个项目区分管理，进行二级匹配等
   replacePlus:[
@@ -135,7 +136,7 @@ var GLOBAL_SETTING: Object = {
           if(Cookie){
             console.log(Cookie);
           }else {
-            console.log('没找到对于的 Cookie');
+            console.log('没找到对应的 Cookie');
           }
           console.log('callbackTest:',oSession.fullUrl);
           oSession.oRequest['Cookie'] = "aaa";
@@ -770,6 +771,43 @@ class Handlers {
     }
   }
 
+  /**
+   * 判断某个字符串是否为本地路径
+   */
+  public static function isLocalPath(pathStr) {
+    return /^[a-zA-Z]:\\\w*/.test(pathStr)
+  }
+
+  /**
+   * 跟进分割字符串提取后面的路径片段
+   * @param fullUrl (string) -必选 完整的url地址
+   * @param splitStr (string) -必选 分割字符串
+   */
+  public static function extractPathSection(fullUrl,splitStr) {
+    return fullUrl.replace(splitStr,'|cutoff|').replace(/^.*\|cutoff\|/,'');
+  }
+
+  /**
+   * 进行本地路径拼接
+   * @param localPath (string) -必选 本地路径（起始段）
+   * @param pathSection (string) -必选 需拼接起来的路径片段
+   */
+  public static function joinLocalPath(localPath,pathSection) {
+    var path = localPath,
+      section = pathSection;
+    /*确保path结尾为\*/
+    if(!/\\$/.test(path)){
+      path+='\\'
+    }
+    /*将/转为\并且删除?或#后面的所有字符串*/
+    section = section.replace(/\//g,'\\').replace(/[\?#].*$/,'');
+    /*确保section起始不包含\*/
+    if(/^\\/.test(section)){
+      section = section.replace(/^\\/,'');
+    }
+    return path+section;
+  }
+
   // 用于背景做交替显示的记号
   public static var showLinkCount = 0;
 
@@ -986,7 +1024,16 @@ class Handlers {
       // 简单替换
       settingMatch(oSession.fullUrl, GLOBAL_SETTING.replace, function (conf, matchStr) {
         // System.Text.RegularExpressions.Regex.IsMatch(oSession.fullUrl, "https://" );
-        oSession.fullUrl = System.Text.RegularExpressions.Regex.Replace(oSession.fullUrl, matchStr, conf);
+        if(isLocalPath(conf)){
+          //进行本地文件替换
+          var pathSection = extractPathSection(oSession.fullUrl,matchStr);
+          var locPath = joinLocalPath(conf,pathSection);
+          oSession["x-replywithfile"] = locPath;
+          console.log('文件替换成功：',oSession.fullUrl + '\n的内容被替换成了如下本地文件的内容：\n' + locPath);
+        }else {
+          /*进行url地址替换*/
+          oSession.fullUrl = System.Text.RegularExpressions.Regex.Replace(oSession.fullUrl, matchStr, conf);
+        }
       }, "【replace】配置出错，请检查你的配置");
 
       // 高级替换
@@ -999,8 +1046,15 @@ class Handlers {
             settingMatch(oSession.fullUrl, rpSettingItem.source, function (conf, matchStr) {
               // 执行替换操作
               var execReplace = function () {
-                var newUrl = System.Text.RegularExpressions.Regex.Replace(oSession.fullUrl, matchStr, rpSettingItem.replaceWith);
-                oSession.fullUrl = newUrl;
+                if( isLocalPath(rpSettingItem.replaceWith) ){
+                  var pathSection = extractPathSection(oSession.fullUrl,matchStr);
+                  var locPath = joinLocalPath(rpSettingItem.replaceWith,pathSection);
+                  oSession["x-replywithfile"] = locPath;
+                }else {
+                  var newUrl = System.Text.RegularExpressions.Regex.Replace(oSession.fullUrl, matchStr, rpSettingItem.replaceWith);
+                  oSession.fullUrl = newUrl;
+                }
+
                 setSessionDisplay(oSession, rpSettingItem);
                 rpSettingItem.disableCaching ? oSession["disableCaching"] = true : "";
 

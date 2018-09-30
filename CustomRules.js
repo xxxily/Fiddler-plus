@@ -1,6 +1,6 @@
 ﻿/*!
  * Fiddler CustomRules
- * @Version 2.0.0
+ * @Version 2.0.1
  * @Author xxxily
  * @home https://github.com/xxxily/Fiddler-plus
  * @bugs https://github.com/xxxily/Fiddler-plus/issues
@@ -1180,11 +1180,6 @@ class Handlers {
         settingMatch(oSession.fullUrl, GLOBAL_SETTING.UI.linkColor, function (conf, matchStr) {
           conf ? oSession["ui-color"] = conf : "";
         }, "【linkColor】配置出错，请检查你的配置");
-
-        // 高亮特殊连接
-        settingMatch(oSession.fullUrl, GLOBAL_SETTING.UI.highlight, function (conf, matchStr) {
-          setSessionDisplay(oSession, conf);
-        }, "【highlight】配置出错，请检查你的配置");
       }
 
       if (!oSession["ui-hide"] && GLOBAL_SETTING.skin) {
@@ -1435,6 +1430,11 @@ class Handlers {
       }, "【statusCode】配置出错，请检查你的配置");
 
       scriptInjecter(oSession);
+
+      // 高亮特殊连接
+      settingMatch(oSession.fullUrl, GLOBAL_SETTING.UI.highlight, function (conf, matchStr) {
+        setSessionDisplay(oSession, conf);
+      }, "【highlight】配置出错，请检查你的配置");
     }
 
     if (m_Hide304s && oSession.responseCode == 304) {

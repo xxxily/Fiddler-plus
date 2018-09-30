@@ -1,6 +1,6 @@
 ﻿/*!
  * Fiddler CustomRules
- * @Version 1.0.4
+ * @Version 2.0.0
  * @Author xxxily
  * @home https://github.com/xxxily/Fiddler-plus
  * @bugs https://github.com/xxxily/Fiddler-plus/issues
@@ -112,7 +112,28 @@ var GLOBAL_SETTING: Object = {
       enabled:false
     }
   ],
-  
+
+  // 脚本注入
+  scriptInject:[
+    {
+      describe:"脚本注入使用示例",
+      // 要注入的脚本路径，可以是本地目录下的脚本，也可以是线上URL脚本
+      scriptPath:"D:\\work\\debugTools\\commonInject.js",
+      // 指定脚本要放置在哪个dom标签里面，默认html 可选值有：html,body,head,title
+      tagName:"head",
+      // 指定放置在标签的哪个位置，默认是before 可选值有 before,after
+      position:'after',
+      /*禁止注入脚本的缓存，也就是为scriptPath增加时间戳参数，默认true*/
+      noCaching:true,
+      /*条件限定*/
+      urlContain:[],
+      urlUnContain:[],
+      enabled: false
+    }
+  ],
+
+  // callbackAcion 主要用于自由度更高得自定义操作，通常是为了实现某些特定的功能
+  // 例如修改某个接口的数据，从而跳过界面的操作的设定值，进行某些功能的破解或自动化操作
   // 注意：如果匹配的链接过多，很容易导致：数组下标超限/未将对象应用设置到对象实例等错误弹窗提示
   callbackAcion:[
     {
@@ -772,6 +793,30 @@ class Handlers {
   }
 
   /**
+   * 判断是否通过了URL的约束限定
+   * @param fullUrl (string) -必选 完整的url地址
+   * @param contain (array|string) -必选 包含某些字符串
+   * @param unContain (array|string) -必选 不包含某些字符串
+   */
+  public static function isPassUrlRestriction(fullUrl, contain, unContain) {
+    var isPass = true;
+    // urlContain限定
+    if(isPass && contain && contain.length > 0){
+      settingUnMatch(fullUrl, contain, function (matchStr) {
+        isPass = false;
+      }, "【replacePlus里面的urlContain】配置出错，请检查你的配置");
+    }
+
+    // urlUnContain限定
+    if(isPass && unContain && unContain.length > 0){
+      settingMatch(fullUrl, unContain, function (matchStr) {
+        isPass = false;
+      }, "【replacePlus里面的urlContain】配置出错，请检查你的配置");
+    }
+    return isPass;
+  }
+
+  /**
    * 判断某个字符串是否为本地路径
    */
   public static function isLocalPath(pathStr) {
@@ -805,7 +850,143 @@ class Handlers {
     if(/^\\/.test(section)){
       section = section.replace(/^\\/,'');
     }
-    return path+section;
+
+    var realPath = (path+section).replace(/\\$/,'');
+    return realPath;
+  }
+
+  /**
+   * 脚本注入器
+   * @param oSession (session) -必选 session对象
+   */
+  public static function scriptInjecter(oSession) {
+    var scriptInject = GLOBAL_SETTING.scriptInject;
+    if(scriptInject && scriptInject.length > 0){
+      var len = scriptInject.length;
+      for (var i = 0; i < len; i++) {
+        var settingItem = scriptInject[i];
+        if (settingItem.enabled === true && settingItem.scriptPath) {
+
+          /*将注入的脚本地址内容替换成本地文件，实现本地脚本内容注入*/
+          if( oSession.fullUrl.indexOf('locationScriptInjectByFiddlerForDebug') > -1 && isLocalPath(settingItem.scriptPath)){
+            oSession["x-replywithfile"] = settingItem.scriptPath;
+          }else {
+            var isHtmlType = oSession.oResponse.headers.ExistsAndContains("Content-Type", "text/html"),
+              isPass = isPassUrlRestriction(oSession.fullUrl,settingItem.urlContain || [],settingItem.urlUnContain || []);;
+
+            if(isHtmlType && isPass){
+              oSession.utilDecodeResponse();
+              /*通过了检测，但内容不包含正确的html内容，也不能进行插入操作*/
+              if(oSession.utilFindInResponse("</body>", false)>-1){
+                var oBody = System.Text.Encoding.UTF8.GetString(oSession.responseBodyBytes);
+
+                var beginStr = settingItem.position === 'after' ? '</' : '<',
+                  oRegEx = new RegExp(beginStr+settingItem.tagName+'\.*>', 'i'),
+                  timestamp = settingItem.noCaching === false ? "" : '?injectForDebug=' + new Date().getTime(),
+                  injectTagStr = '<script src="' + settingItem.scriptPath + timestamp + '"></script>';
+
+                if(isLocalPath(settingItem.scriptPath)){
+                  injectTagStr = '<script src="./locationScriptInjectByFiddlerForDebug.js'+ timestamp +'"></script>';
+                }
+
+                var matchStr = oBody.match(oRegEx);
+                if(matchStr){
+                  matchStr = matchStr[0];
+                }
+
+                var injectStr = injectTagStr+'\n' + matchStr ;
+                if(settingItem.position === 'after'){
+                  injectStr = matchStr + '\n' + injectTagStr;
+                }
+
+                oBody = oBody.replace(oRegEx, injectStr);
+                oSession.utilSetResponseBody(oBody);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * 代理替换
+   * @param oSession (session) -必选 session对象
+   */
+  public static function replaceAgency(oSession) {
+    // 简单替换
+    settingMatch(oSession.fullUrl, GLOBAL_SETTING.replace, function (conf, matchStr) {
+      // System.Text.RegularExpressions.Regex.IsMatch(oSession.fullUrl, "https://" );
+      if(isLocalPath(conf)){
+        //进行本地文件替换
+        var pathSection = extractPathSection(oSession.fullUrl,matchStr);
+        var locPath = joinLocalPath(conf,pathSection);
+        oSession["x-replywithfile"] = locPath;
+        console.log('文件替换成功：',oSession.fullUrl + '\n的内容被替换成了如下本地文件的内容：\n' + locPath);
+      }else {
+        /*进行url地址替换*/
+        oSession.fullUrl = System.Text.RegularExpressions.Regex.Replace(oSession.fullUrl, matchStr, conf);
+      }
+    }, "【replace】配置出错，请检查你的配置");
+
+    // 高级替换
+    var replacePlus = GLOBAL_SETTING.replacePlus;
+    if (replacePlus && replacePlus.length > 0) {
+      var rpLen = replacePlus.length;
+      for (var i = 0; i < rpLen; i++) {
+        var rpSettingItem = replacePlus[i];
+        if (rpSettingItem.enabled === true && rpSettingItem.replaceWith) {
+          settingMatch(oSession.fullUrl, rpSettingItem.source, function (conf, matchStr) {
+            // 执行替换操作
+            var execReplace = function () {
+              if( isLocalPath(rpSettingItem.replaceWith) ){
+                var pathSection = extractPathSection(oSession.fullUrl,matchStr);
+                var locPath = joinLocalPath(rpSettingItem.replaceWith,pathSection);
+                oSession["x-replywithfile"] = locPath;
+                console.log('文件替换成功：',oSession.fullUrl + '\n的内容被替换成了如下本地文件的内容：\n' + locPath);
+              }else {
+                var newUrl = System.Text.RegularExpressions.Regex.Replace(oSession.fullUrl, matchStr, rpSettingItem.replaceWith);
+                oSession.fullUrl = newUrl;
+              }
+
+              setSessionDisplay(oSession, rpSettingItem);
+              rpSettingItem.disableCaching ? oSession["disableCaching"] = true : "";
+
+            };
+
+            var hasPassCheck = true ;
+
+            // Referer限定
+            if(hasPassCheck && rpSettingItem.Referer && rpSettingItem.Referer.length > 0){
+
+              if(!oSession.oRequest['Referer']){
+                hasPassCheck = false;
+              }
+
+              settingUnMatch(oSession.oRequest['Referer'], rpSettingItem.Referer, function (matchStr02) {
+                hasPassCheck = false;
+              }, "【replacePlus里面的Referer】配置出错，请检查你的配置");
+
+              /*请求页面通过限定，才能往下玩*/
+              settingMatch(oSession.fullUrl, rpSettingItem.Referer, function (matchStr02) {
+                hasPassCheck = true;
+              }, "【replacePlus里面的Referer】配置出错，请检查你的配置");
+
+            }
+
+            // url限定
+            if(hasPassCheck){
+              hasPassCheck = isPassUrlRestriction(oSession.fullUrl,rpSettingItem.urlContain || [],rpSettingItem.urlUnContain || []);
+            }
+
+            if(hasPassCheck){
+              execReplace();
+            }
+
+          }, "【replacePlus】配置出错，请检查你的配置");
+        }
+      }
+    }
   }
 
   // 用于背景做交替显示的记号
@@ -1020,89 +1201,7 @@ class Handlers {
       // 配色 END
 
       // 接管替换URL BEGIN
-
-      // 简单替换
-      settingMatch(oSession.fullUrl, GLOBAL_SETTING.replace, function (conf, matchStr) {
-        // System.Text.RegularExpressions.Regex.IsMatch(oSession.fullUrl, "https://" );
-        if(isLocalPath(conf)){
-          //进行本地文件替换
-          var pathSection = extractPathSection(oSession.fullUrl,matchStr);
-          var locPath = joinLocalPath(conf,pathSection);
-          oSession["x-replywithfile"] = locPath;
-          console.log('文件替换成功：',oSession.fullUrl + '\n的内容被替换成了如下本地文件的内容：\n' + locPath);
-        }else {
-          /*进行url地址替换*/
-          oSession.fullUrl = System.Text.RegularExpressions.Regex.Replace(oSession.fullUrl, matchStr, conf);
-        }
-      }, "【replace】配置出错，请检查你的配置");
-
-      // 高级替换
-      var replacePlus = GLOBAL_SETTING.replacePlus;
-      if (replacePlus && replacePlus.length > 0) {
-        var rpLen = replacePlus.length;
-        for (var i = 0; i < rpLen; i++) {
-          var rpSettingItem = replacePlus[i];
-          if (rpSettingItem.enabled === true && rpSettingItem.replaceWith) {
-            settingMatch(oSession.fullUrl, rpSettingItem.source, function (conf, matchStr) {
-              // 执行替换操作
-              var execReplace = function () {
-                if( isLocalPath(rpSettingItem.replaceWith) ){
-                  var pathSection = extractPathSection(oSession.fullUrl,matchStr);
-                  var locPath = joinLocalPath(rpSettingItem.replaceWith,pathSection);
-                  oSession["x-replywithfile"] = locPath;
-                }else {
-                  var newUrl = System.Text.RegularExpressions.Regex.Replace(oSession.fullUrl, matchStr, rpSettingItem.replaceWith);
-                  oSession.fullUrl = newUrl;
-                }
-
-                setSessionDisplay(oSession, rpSettingItem);
-                rpSettingItem.disableCaching ? oSession["disableCaching"] = true : "";
-
-              };
-
-              var hasPassCheck = true ;
-
-              // Referer限定
-              if(hasPassCheck && rpSettingItem.Referer && rpSettingItem.Referer.length > 0){
-
-                if(!oSession.oRequest['Referer']){
-                  hasPassCheck = false;
-                }
-
-                settingUnMatch(oSession.oRequest['Referer'], rpSettingItem.Referer, function (matchStr02) {
-                  hasPassCheck = false;
-                }, "【replacePlus里面的Referer】配置出错，请检查你的配置");
-
-                /*让请求页面通过限定，才能往下玩*/
-                settingMatch(oSession.fullUrl, rpSettingItem.Referer, function (matchStr02) {
-                  hasPassCheck = true;
-                }, "【replacePlus里面的Referer】配置出错，请检查你的配置");
-
-              }
-
-              // urlContain限定
-              if(hasPassCheck && rpSettingItem.urlContain && rpSettingItem.urlContain.length > 0){
-                settingUnMatch(oSession.fullUrl, rpSettingItem.urlContain, function (matchStr02) {
-                  hasPassCheck = false;
-                }, "【replacePlus里面的urlContain】配置出错，请检查你的配置");
-              }
-
-              // urlUnContain限定
-              if(hasPassCheck && rpSettingItem.urlUnContain && rpSettingItem.urlUnContain.length > 0){
-                settingMatch(oSession.fullUrl, rpSettingItem.urlUnContain, function (matchStr02) {
-                  hasPassCheck = false;
-                }, "【replacePlus里面的urlContain】配置出错，请检查你的配置");
-              }
-
-              if(hasPassCheck){
-                execReplace();
-              }
-
-            }, "【replacePlus】配置出错，请检查你的配置");
-          }
-        }
-      }
-
+      replaceAgency(oSession);
       // 接管替换URL END
 
       // 根据关键字进行搜索查找 BEGIN
@@ -1334,6 +1433,8 @@ class Handlers {
         conf ? oSession["ui-color"] = conf : "";
         return true;
       }, "【statusCode】配置出错，请检查你的配置");
+
+      scriptInjecter(oSession);
     }
 
     if (m_Hide304s && oSession.responseCode == 304) {

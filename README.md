@@ -113,6 +113,25 @@ var GLOBAL_SETTING:Object = {
         }
     ],
 
+    // 脚本注入
+	scriptInject:[
+	    {
+	      describe:"脚本注入使用示例",
+	      // 要注入的脚本路径，可以是本地目录下的脚本，也可以是线上URL脚本
+	      scriptPath:"D:\\work\\debugTools\\commonInject.js",
+	      // 指定脚本要放置在哪个dom标签里面，默认html 可选值有：html,body,head,title
+	      tagName:"head",
+	      // 指定放置在标签的哪个位置，默认是before 可选值有 before,after
+	      position:'after',
+	      /*禁止注入脚本的缓存，也就是为scriptPath增加时间戳参数，默认true*/
+	      noCaching:true,
+	      /*条件限定*/
+	      urlContain:[],
+	      urlUnContain:[],
+	      enabled: false
+	    }
+	],
+
     // 注意：如果匹配的链接过多，很容易导致：数组下标超限/未将对象应用设置到对象实例等错误弹窗提示
     callbackAcion:[
         {

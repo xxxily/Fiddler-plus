@@ -75,7 +75,8 @@ var GLOBAL_SETTING:Object = {
     // 替换URL【可用于多环境切换、解决跨域、快速调试线上脚本等】
     replace:{
         "http://xxxily.com/":"http://xxxily.cc/",
-        "":""
+        /*替换成本地某个对应目录下的文件*/
+        "http://xxxily.com/m":"D:\\work\\"
     },
     // 替换URL的高级版，可以实现多个项目区分管理，进行二级匹配等
     replacePlus:[
@@ -135,7 +136,7 @@ var GLOBAL_SETTING:Object = {
               if(Cookie){
                 console.log(Cookie);
               }else {
-                console.log('没找到对于的 Cookie');
+                console.log('没找到对应的 Cookie');
               }
               console.log('callbackTest:',oSession.fullUrl);
               oSession.oRequest['Cookie'] = "aaa";

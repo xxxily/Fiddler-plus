@@ -1,6 +1,6 @@
 ﻿/*!
  * Fiddler CustomRules
- * @Version 2.0.1
+ * @Version 2.1.0
  * @Author xxxily
  * @home https://github.com/xxxily/Fiddler-plus
  * @bugs https://github.com/xxxily/Fiddler-plus/issues
@@ -122,7 +122,7 @@ var GLOBAL_SETTING: Object = {
       // 指定脚本要放置在哪个dom标签里面，默认html 可选值有：html,body,head,title
       tagName:"head",
       // 指定放置在标签的哪个位置，默认是before 可选值有 before,after
-      position:'after',
+      // position:'after',
       /*禁止注入脚本的缓存，也就是为scriptPath增加时间戳参数，默认true*/
       noCaching:true,
       /*条件限定*/
@@ -538,6 +538,38 @@ class Handlers {
    }
    */
 
+  /*参考文档 BEGIN*/
+  QuickLinkMenu("&Docs")
+  QuickLinkItem("FiddlerScript", "http://docs.telerik.com/fiddler/KnowledgeBase/FiddlerScript/ModifyRequestOrResponse")
+  QuickLinkItem("Fiddler-plus", "https://github.com/xxxily/Fiddler-plus")
+  QuickLinkItem("FiddlerScript-API", "https://github.com/xxxily/Fiddler-plus/blob/master/doc/FiddlerScript_api_reference.md")
+  QuickLinkItem(".netFramework.4.7", "https://docs.microsoft.com/zh-cn/dotnet/api/index?view=netframework-4.7.2")
+  public static function DoLinksMenu(sText: String, sAction: String)
+  {
+    Utilities.LaunchHyperlink(sAction);
+  }
+  /*参考文档 END*/
+
+  /*Fiddler-plus 选项开关 BEGIN*/
+  public static RulesOption("disable Filter rules", "Fiddler-plus")
+  var m_off_filterRules: boolean = false;
+
+  public static RulesOption("disable Promiscuous mode", "Fiddler-plus")
+  var m_off_promiscuousMode: boolean = false;
+
+  public static RulesOption("disable Tunnel To", "Fiddler-plus")
+  var m_off_tunnelTo: boolean = false;
+
+  public static RulesOption("disable Replace rules", "Fiddler-plus")
+  var m_off_replaceRules: boolean = false;
+
+  public static RulesOption("disable Inject rules", "Fiddler-plus")
+  var m_off_injectRules: boolean = false;
+
+  public static RulesOption("disable callbackAcion", "Fiddler-plus")
+  var m_off_callbackAcion: boolean = false;
+  /*Fiddler-plus 选项开关 END*/
+
   public static RulesOption("Hide 304s")
   BindPref("fiddlerscript.rules.Hide304s")
   var m_Hide304s: boolean = false;
@@ -824,6 +856,20 @@ class Handlers {
   }
 
   /**
+   * 把链接地址统一成数组形式
+   * @param links (string|array) -必选 链接地址
+   */
+  public static function linksToArr(links) {
+    var arr = [];
+    if(links && typeof links === 'string'){
+      arr.push(arr);
+    }else if(Object.prototype.toString.call(links) === '[object Array]'){
+      arr = links;
+    }
+    return arr;
+  }
+
+  /**
    * 跟进分割字符串提取后面的路径片段
    * @param fullUrl (string) -必选 完整的url地址
    * @param splitStr (string) -必选 分割字符串
@@ -856,10 +902,80 @@ class Handlers {
   }
 
   /**
+   * 提取需要展示的连接，由于每个连接都要重新提取和进行匹配计算，所以会造成较大的性能开销
+   * 此功能处于测试阶段，如果出现较多报错建议 将 m_off_promiscuousMode 设为true
+   */
+  public static function extractShowLinks() {
+    var showLinks = linksToArr(GLOBAL_SETTING.Filter.showLinks);
+
+    /**
+     * 使用混杂模式的话，自动提取各个选项需要展示的URL地址
+     * 由于不进行重复性判断，所以可能会出错和造成性能下降
+     * */
+    if(!m_off_promiscuousMode){
+      /*提取replace里面要显示的连接*/
+      for (var key in GLOBAL_SETTING.replace) {
+        if(key){
+          showLinks.push(key);
+        }
+      }
+
+      /*提取replacePlus里面要显示的连接*/
+      for (var i=0; i < GLOBAL_SETTING.replacePlus.length; i++) {
+        var item = GLOBAL_SETTING.replacePlus[i];
+        if(item.enabled && item.source){
+          showLinks = showLinks.concat(linksToArr(item.source));
+        }
+      }
+
+      /*提取 scriptInject 里面要显示的连接*/
+      var hasInjectLocalFile = false;
+      for (var i=0; i < GLOBAL_SETTING.scriptInject.length; i++) {
+        var item = GLOBAL_SETTING.scriptInject[i];
+        if(item.enabled && item.scriptPath){
+          if(isLocalPath(item.scriptPath)){
+            hasInjectLocalFile = true;
+          }else {
+            console.log(item.scriptPath);
+            showLinks.push(item.scriptPath);
+          }
+          if(item.urlContain){
+            showLinks = showLinks.concat(linksToArr(item.urlContain));
+          }
+        }
+      }
+      if(hasInjectLocalFile){
+        showLinks.push('locationScriptInjectByFiddlerForDebug.js');
+      }
+
+      /*提取callbackAcion里面要显示的连接*/
+      for (var i=0; i < GLOBAL_SETTING.callbackAcion.length; i++) {
+        var item = GLOBAL_SETTING.callbackAcion[i];
+        if(item.enabled && item.source){
+          showLinks = showLinks.concat(linksToArr(item.source));
+        }
+      }
+
+      /*提取UI.highlight里面要显示的连接*/
+      for (var key in GLOBAL_SETTING.UI.highlight) {
+        if(key){
+          showLinks.push(key);
+        }
+      }
+    }
+
+    return showLinks;
+  }
+
+  /**
    * 脚本注入器
    * @param oSession (session) -必选 session对象
    */
   public static function scriptInjecter(oSession) {
+    if(m_off_injectRules){
+      return false;
+    }
+
     var scriptInject = GLOBAL_SETTING.scriptInject;
     if(scriptInject && scriptInject.length > 0){
       var len = scriptInject.length;
@@ -914,6 +1030,10 @@ class Handlers {
    * @param oSession (session) -必选 session对象
    */
   public static function replaceAgency(oSession) {
+    if(m_off_replaceRules){
+      return false;
+    }
+
     // 简单替换
     settingMatch(oSession.fullUrl, GLOBAL_SETTING.replace, function (conf, matchStr) {
       // System.Text.RegularExpressions.Regex.IsMatch(oSession.fullUrl, "https://" );
@@ -1010,7 +1130,7 @@ class Handlers {
   public static function hideTunnelToLink(oSession) {
     // TODO 过滤 tunnel to 连接 待优化
     var hideTunnelTo = GLOBAL_SETTING.Filter.hideTunnelTo;
-    if(hideTunnelTo){
+    if(hideTunnelTo && !m_off_tunnelTo){
       settingMatch(oSession.fullUrl, [':443'], function () {
         hideLink(oSession);
       }, "【hideTunnelTo】配置出错，请检查你的配置");
@@ -1023,7 +1143,7 @@ class Handlers {
    * @param eventName (String) -必选，回调事件名称 可选值有：OnBeforeRequest OnPeekAtResponseHeaders OnBeforeResponse OnDone OnReturningError
    */
   public static function sessionCallback(oSession,eventName) {
-    if(!oSession || !eventName || !settingMatch){
+    if(m_off_callbackAcion || !oSession || !eventName || !settingMatch){
       // console.log('出现【未将对象引用设置到对象实例】的错误~');
       return false;
     }
@@ -1100,53 +1220,55 @@ class Handlers {
     if(settingMatch && settingUnMatch && oSession){
       sessionCallback && sessionCallback(oSession,'OnBeforeRequest');
 
-      // 过滤出需要显示或隐藏的连接 BEGIN
+      if(!m_off_filterRules){
+        // 过滤出需要显示或隐藏的连接 BEGIN
 
-      var showLinks = GLOBAL_SETTING.Filter.showLinks,
-        hideLinks = GLOBAL_SETTING.Filter.hideLinks;
-      // 过滤出要显示的连接，把不在显示列表里的连接隐藏掉
-      settingUnMatch(oSession.fullUrl, showLinks, function () {
-        hideLink(oSession);
-      }, "【showLinks】配置出错，请检查你的配置");
+        var showLinks = extractShowLinks(),
+          hideLinks = GLOBAL_SETTING.Filter.hideLinks;
+        // 过滤出要显示的连接，把不在显示列表里的连接隐藏掉
+        settingUnMatch(oSession.fullUrl, showLinks, function () {
+          hideLink(oSession);
+        }, "【showLinks】配置出错，请检查你的配置");
 
-      // 过滤出要隐藏的连接，把在隐藏列表里的连接隐藏掉
-      settingMatch(oSession.fullUrl, hideLinks, function (conf, matchStr) {
-        hideLink(oSession);
-        return true;
-      }, "【hideLinks】配置出错，请检查你的配置");
+        // 过滤出要隐藏的连接，把在隐藏列表里的连接隐藏掉
+        settingMatch(oSession.fullUrl, hideLinks, function (conf, matchStr) {
+          hideLink(oSession);
+          return true;
+        }, "【hideLinks】配置出错，请检查你的配置");
 
-      // 过滤出需要显示或隐藏的连接 END
+        // 过滤出需要显示或隐藏的连接 END
 
-      // 根据头部字段过滤出需要显示或隐藏的连接 BEGIN
-      var headerFilter = GLOBAL_SETTING.Filter.headerFieldFilter;
-      if (headerFilter && headerFilter.length > 0) {
-        var hfLen = headerFilter.length;
-        for (var i = 0; i < hfLen; i++) {
-          var settingItem = headerFilter[i];
-          if (settingItem.enabled === true && settingItem.workAt === 'request' && settingItem.fieldName) {
-            if(settingItem.display === true ){
-              // 过滤出要显示的连接，把不在显示列表里的连接隐藏掉
-              if(oSession.oRequest[settingItem.fieldName]){
-                settingUnMatch(oSession.oRequest[settingItem.fieldName], settingItem.filterList, function () {
-                  hideLink(oSession);
-                }, "【headerFieldFilter_show】配置出错，请检查你的配置");
+        // 根据头部字段过滤出需要显示或隐藏的连接 BEGIN
+        var headerFilter = GLOBAL_SETTING.Filter.headerFieldFilter;
+        if (headerFilter && headerFilter.length > 0) {
+          var hfLen = headerFilter.length;
+          for (var i = 0; i < hfLen; i++) {
+            var settingItem = headerFilter[i];
+            if (settingItem.enabled === true && settingItem.workAt === 'request' && settingItem.fieldName) {
+              if(settingItem.display === true ){
+                // 过滤出要显示的连接，把不在显示列表里的连接隐藏掉
+                if(oSession.oRequest[settingItem.fieldName]){
+                  settingUnMatch(oSession.oRequest[settingItem.fieldName], settingItem.filterList, function () {
+                    hideLink(oSession);
+                  }, "【headerFieldFilter_show】配置出错，请检查你的配置");
+                }else {
+                  /*不存在对于header属值的，不能直接隐藏，只能后续操作，否则会把其关联的链接也一并隐藏，最后就会导致无任何链接可显示*/
+                  // hideLink(oSession);
+                  // console.log('以下链接本该隐藏的，但是由于具有关联性，不能将其马上隐藏：',oSession.fullUrl);
+                  oSession['hide-me'] = 'true';
+                }
               }else {
-                /*不存在对于header属值的，不能直接隐藏，只能后续操作，否则会把其关联的链接也一并隐藏，最后就会导致无任何链接可显示*/
-                // hideLink(oSession);
-                // console.log('以下链接本该隐藏的，但是由于具有关联性，不能将其马上隐藏：',oSession.fullUrl);
-                oSession['hide-me'] = 'true';
+                // 过滤出要隐藏的连接，把在隐藏列表里的连接隐藏掉
+                settingMatch(oSession.oRequest[settingItem.fieldName], settingItem.filterList, function (conf, matchStr) {
+                  hideLink(oSession);
+                  return true;
+                }, "【headerFieldFilter_hide】配置出错，请检查你的配置");
               }
-            }else {
-              // 过滤出要隐藏的连接，把在隐藏列表里的连接隐藏掉
-              settingMatch(oSession.oRequest[settingItem.fieldName], settingItem.filterList, function (conf, matchStr) {
-                hideLink(oSession);
-                return true;
-              }, "【headerFieldFilter_hide】配置出错，请检查你的配置");
             }
           }
         }
+        // 根据头部字段过滤出需要显示或隐藏的连接 END
       }
-      // 根据头部字段过滤出需要显示或隐藏的连接 END
 
       // 过滤出要禁止缓存的连接
       var disableCachingList = GLOBAL_SETTING.disableCachingList;
@@ -1157,7 +1279,7 @@ class Handlers {
 
 
       // 标注隐藏443链接
-      if(GLOBAL_SETTING.Filter.hideTunnelTo){
+      if(GLOBAL_SETTING.Filter.hideTunnelTo && !m_off_tunnelTo){
         settingMatch(oSession.fullUrl, [':443'], function () {
           oSession['hide-me'] = 'true';
         }, "【hideTunnelTo】配置出错，请检查你的配置");
@@ -1356,61 +1478,63 @@ class Handlers {
     if(settingMatch && settingUnMatch && oSession){
       sessionCallback && sessionCallback(oSession,'OnBeforeResponse');
 
-      // 根据头部字段过滤出需要显示或隐藏的连接 BEGIN
-      var headerFilter = GLOBAL_SETTING.Filter.headerFieldFilter;
-      if (headerFilter && headerFilter.length > 0) {
-        var hfLen = headerFilter.length;
-        for (var i = 0; i < hfLen; i++) {
-          var settingItem = headerFilter[i];
-          if (settingItem.enabled === true && settingItem.workAt === 'response' && settingItem.fieldName) {
-            if(settingItem.display === true ){
-              // 过滤出要显示的连接，把不在显示列表里的连接隐藏掉
-              if(oSession.oRequest[settingItem.fieldName]){
-                settingUnMatch(oSession.oResponse[settingItem.fieldName], settingItem.filterList, function () {
-                  hideLink(oSession);
-                }, "【headerFieldFilter_show】配置出错，请检查你的配置");
+      var contentType = oSession.oResponse["Content-Type"];
+
+        if(!m_off_filterRules){
+        // 根据头部字段过滤出需要显示或隐藏的连接 BEGIN
+        var headerFilter = GLOBAL_SETTING.Filter.headerFieldFilter;
+        if (headerFilter && headerFilter.length > 0) {
+          var hfLen = headerFilter.length;
+          for (var i = 0; i < hfLen; i++) {
+            var settingItem = headerFilter[i];
+            if (settingItem.enabled === true && settingItem.workAt === 'response' && settingItem.fieldName) {
+              if(settingItem.display === true ){
+                // 过滤出要显示的连接，把不在显示列表里的连接隐藏掉
+                if(oSession.oRequest[settingItem.fieldName]){
+                  settingUnMatch(oSession.oResponse[settingItem.fieldName], settingItem.filterList, function () {
+                    hideLink(oSession);
+                  }, "【headerFieldFilter_show】配置出错，请检查你的配置");
+                }else {
+                  /*不存在对于header属值的，不能直接隐藏，只能后续操作，否则会把其关联的链接也一并隐藏，最后就会导致无任何链接可显示*/
+                  // hideLink(oSession);
+                  // console.log('以下链接本该隐藏的，但是由于具有关联性，不能将其马上隐藏：',oSession.fullUrl);
+                  oSession['hide-me'] = 'true';
+                }
               }else {
-                /*不存在对于header属值的，不能直接隐藏，只能后续操作，否则会把其关联的链接也一并隐藏，最后就会导致无任何链接可显示*/
-                // hideLink(oSession);
-                // console.log('以下链接本该隐藏的，但是由于具有关联性，不能将其马上隐藏：',oSession.fullUrl);
-                oSession['hide-me'] = 'true';
+                // 过滤出要隐藏的连接，把在隐藏列表里的连接隐藏掉
+                settingMatch(oSession.oResponse[settingItem.fieldName], settingItem.filterList, function (conf, matchStr) {
+                  hideLink(oSession);
+                  return true;
+                }, "【headerFieldFilter_hide】配置出错，请检查你的配置");
               }
-            }else {
-              // 过滤出要隐藏的连接，把在隐藏列表里的连接隐藏掉
-              settingMatch(oSession.oResponse[settingItem.fieldName], settingItem.filterList, function (conf, matchStr) {
-                hideLink(oSession);
-                return true;
-              }, "【headerFieldFilter_hide】配置出错，请检查你的配置");
             }
           }
         }
+        // 根据头部字段过滤出需要显示或隐藏的连接 END
+
+        // 过滤出需要显示或隐藏的连接 BEGIN
+        var showContentType = GLOBAL_SETTING.Filter.showContentType,
+          hideContentType = GLOBAL_SETTING.Filter.hideContentType;
+
+        //开启了 ContentType 过滤的时候， 把不带 Content-Type 全部过滤掉
+        if (!contentType && showContentType.length > 0) {
+          console.log("隐藏不带 ContentType 的连接");
+          hideLink(oSession);
+        }
+
+        // 过滤出要显示的连接，把不在显示列表里的连接隐藏掉
+        settingUnMatch(contentType, showContentType, function () {
+          hideLink(oSession);
+        }, "【showContentType】配置出错，请检查你的配置");
+
+        // 过滤出要隐藏的连接，把在隐藏列表里的连接隐藏掉
+        settingMatch(contentType, hideContentType, function (conf, matchStr) {
+          hideLink(oSession);
+          return true;
+        }, "【hideContentType】配置出错，请检查你的配置");
+
+        // 过滤出需要显示或隐藏的连接 END
       }
-      // 根据头部字段过滤出需要显示或隐藏的连接 END
-
-      // 过滤出需要显示或隐藏的连接 BEGIN
-
-      var contentType = oSession.oResponse["Content-Type"],
-        showContentType = GLOBAL_SETTING.Filter.showContentType,
-        hideContentType = GLOBAL_SETTING.Filter.hideContentType;
-
-      //开启了 ContentType 过滤的时候， 把不带 Content-Type 全部过滤掉
-      if (!contentType && showContentType.length > 0) {
-        console.log("隐藏不带 ContentType 的连接");
-        hideLink(oSession);
-      }
-
-      // 过滤出要显示的连接，把不在显示列表里的连接隐藏掉
-      settingUnMatch(contentType, showContentType, function () {
-        hideLink(oSession);
-      }, "【showContentType】配置出错，请检查你的配置");
-
-      // 过滤出要隐藏的连接，把在隐藏列表里的连接隐藏掉
-      settingMatch(contentType, hideContentType, function (conf, matchStr) {
-        hideLink(oSession);
-        return true;
-      }, "【hideContentType】配置出错，请检查你的配置");
-
-      // 过滤出需要显示或隐藏的连接 END
 
       // 根据contentType显示连接颜色
       var contentTypeColor = GLOBAL_SETTING.UI.contentTypeColor;

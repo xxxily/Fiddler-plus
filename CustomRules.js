@@ -1,6 +1,6 @@
 ﻿/*!
  * Fiddler CustomRules
- * @Version 2.1.0
+ * @Version 2.2.1
  * @Author xxxily
  * @home https://github.com/xxxily/Fiddler-plus
  * @bugs https://github.com/xxxily/Fiddler-plus/issues
@@ -91,6 +91,11 @@ var GLOBAL_SETTING: Object = {
       /*Referer限定，方便精确控制【注意：Referer限定会导致只能在当前限定页面下查看后续链接，否则会不能正常代理】*/
       Referer:[
         '\\w*.html'
+      ],
+      subRules:[
+        {
+          describe:"subRules 字段跟父级字段完全一致，主要是方便对特殊情况进行单独处理"
+        }
       ],
       urlContain:"\\.html|\\.css|\\.js|\\.jpeg|\\.jpg|\\.png|\\.gif|\\.mp4|\\.flv|\\.webp",
       replaceWith:"http://localhost:3000",
@@ -836,14 +841,14 @@ class Handlers {
     if(isPass && contain && contain.length > 0){
       settingUnMatch(fullUrl, contain, function (matchStr) {
         isPass = false;
-      }, "【replacePlus里面的urlContain】配置出错，请检查你的配置");
+      }, "【isPassUrlRestriction里面的urlContain】配置出错，请检查你的配置");
     }
 
     // urlUnContain限定
     if(isPass && unContain && unContain.length > 0){
       settingMatch(fullUrl, unContain, function (matchStr) {
         isPass = false;
-      }, "【replacePlus里面的urlContain】配置出错，请检查你的配置");
+      }, "【isPassUrlRestriction里面的urlContain】配置出错，请检查你的配置");
     }
     return isPass;
   }
@@ -862,7 +867,7 @@ class Handlers {
   public static function linksToArr(links) {
     var arr = [];
     if(links && typeof links === 'string'){
-      arr.push(arr);
+      arr.push(links);
     }else if(Object.prototype.toString.call(links) === '[object Array]'){
       arr = links;
     }
@@ -936,7 +941,6 @@ class Handlers {
           if(isLocalPath(item.scriptPath)){
             hasInjectLocalFile = true;
           }else {
-            console.log(item.scriptPath);
             showLinks.push(item.scriptPath);
           }
           if(item.urlContain){
@@ -1026,7 +1030,7 @@ class Handlers {
   }
 
   /**
-   * 代理替换
+   * 简单代理替换
    * @param oSession (session) -必选 session对象
    */
   public static function replaceAgency(oSession) {
@@ -1048,63 +1052,88 @@ class Handlers {
         oSession.fullUrl = System.Text.RegularExpressions.Regex.Replace(oSession.fullUrl, matchStr, conf);
       }
     }, "【replace】配置出错，请检查你的配置");
+  }
 
+  /**
+   * 高级代理替换
+   * @param oSession (session) -必选 session对象
+   */
+  public static function replacePlusAgency(oSession) {
+    if(m_off_replaceRules){
+      return false;
+    }
+
+    // 执行替换规则
+    function replaceWithRule(rule) {
+      if (rule.enabled !== false && !oSession["has-replace"]) {
+        settingMatch(oSession.fullUrl, rule.source, function (conf, matchStr) {
+          var hasPassCheck = true ;
+
+          // Referer限定
+          if(hasPassCheck && rule.Referer && rule.Referer.length > 0){
+
+            if(!oSession.oRequest['Referer']){
+              hasPassCheck = false;
+            }
+
+            settingUnMatch(oSession.oRequest['Referer'], rule.Referer, function (matchStr02) {
+              hasPassCheck = false;
+            }, "【replacePlus里面的Referer】配置出错，请检查你的配置");
+
+            /*请求页面通过限定，才能往下玩*/
+            settingMatch(oSession.fullUrl, rule.Referer, function (matchStr02) {
+              hasPassCheck = true;
+            }, "【replacePlus里面的Referer】配置出错，请检查你的配置");
+
+          }
+
+          // url的contain、unContain限定
+          if(hasPassCheck){
+            hasPassCheck = isPassUrlRestriction(oSession.fullUrl,rule.urlContain || [],rule.urlUnContain || []);
+          }
+
+          // 禁止缓存
+          if(hasPassCheck && typeof rule.disableCaching === 'boolean'){
+            oSession["disableCaching"] = rule.disableCaching;
+          }
+
+          // 如果存在子级规则，则进行子级递归替换（理论可以上可以进行无限级的递归）
+          if(hasPassCheck && rule.subRules){
+            for (var i=0; i < rule.subRules.length; i++) {
+              var subRules = rule.subRules[i];
+              replaceWithRule(subRules);
+            }
+          }
+
+          // 执行替换操作
+          if(hasPassCheck && !oSession["has-replace"] && rule.replaceWith){
+            if( isLocalPath(rule.replaceWith) ){
+              var pathSection = extractPathSection(oSession.fullUrl,matchStr);
+              var locPath = joinLocalPath(rule.replaceWith,pathSection);
+              oSession["x-replywithfile"] = locPath;
+              console.log('文件替换成功：',oSession.fullUrl + '\n的内容被替换成了如下本地文件的内容：\n' + locPath);
+            }else {
+              var newUrl = System.Text.RegularExpressions.Regex.Replace(oSession.fullUrl, matchStr, rule.replaceWith);
+              oSession.fullUrl = newUrl;
+            }
+
+            setSessionDisplay(oSession, rule);
+
+            // 标注已被替换过 防多次替换，也意味着子级的替换优先级高于父级的
+            oSession["has-replace"] = true;
+          }
+
+        }, "【replacePlus】配置出错，请检查你的配置");
+      }
+    }
+    
     // 高级替换
     var replacePlus = GLOBAL_SETTING.replacePlus;
     if (replacePlus && replacePlus.length > 0) {
-      var rpLen = replacePlus.length;
-      for (var i = 0; i < rpLen; i++) {
-        var rpSettingItem = replacePlus[i];
-        if (rpSettingItem.enabled === true && rpSettingItem.replaceWith) {
-          settingMatch(oSession.fullUrl, rpSettingItem.source, function (conf, matchStr) {
-            // 执行替换操作
-            var execReplace = function () {
-              if( isLocalPath(rpSettingItem.replaceWith) ){
-                var pathSection = extractPathSection(oSession.fullUrl,matchStr);
-                var locPath = joinLocalPath(rpSettingItem.replaceWith,pathSection);
-                oSession["x-replywithfile"] = locPath;
-                console.log('文件替换成功：',oSession.fullUrl + '\n的内容被替换成了如下本地文件的内容：\n' + locPath);
-              }else {
-                var newUrl = System.Text.RegularExpressions.Regex.Replace(oSession.fullUrl, matchStr, rpSettingItem.replaceWith);
-                oSession.fullUrl = newUrl;
-              }
-
-              setSessionDisplay(oSession, rpSettingItem);
-              rpSettingItem.disableCaching ? oSession["disableCaching"] = true : "";
-
-            };
-
-            var hasPassCheck = true ;
-
-            // Referer限定
-            if(hasPassCheck && rpSettingItem.Referer && rpSettingItem.Referer.length > 0){
-
-              if(!oSession.oRequest['Referer']){
-                hasPassCheck = false;
-              }
-
-              settingUnMatch(oSession.oRequest['Referer'], rpSettingItem.Referer, function (matchStr02) {
-                hasPassCheck = false;
-              }, "【replacePlus里面的Referer】配置出错，请检查你的配置");
-
-              /*请求页面通过限定，才能往下玩*/
-              settingMatch(oSession.fullUrl, rpSettingItem.Referer, function (matchStr02) {
-                hasPassCheck = true;
-              }, "【replacePlus里面的Referer】配置出错，请检查你的配置");
-
-            }
-
-            // url限定
-            if(hasPassCheck){
-              hasPassCheck = isPassUrlRestriction(oSession.fullUrl,rpSettingItem.urlContain || [],rpSettingItem.urlUnContain || []);
-            }
-
-            if(hasPassCheck){
-              execReplace();
-            }
-
-          }, "【replacePlus】配置出错，请检查你的配置");
-        }
+      var len = replacePlus.length;
+      for (var i = 0; i < len; i++) {
+        var rule = replacePlus[i];
+        replaceWithRule(rule);
       }
     }
   }
@@ -1319,6 +1348,7 @@ class Handlers {
 
       // 接管替换URL BEGIN
       replaceAgency(oSession);
+      replacePlusAgency(oSession);
       // 接管替换URL END
 
       // 根据关键字进行搜索查找 BEGIN

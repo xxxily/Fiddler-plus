@@ -92,6 +92,11 @@ var GLOBAL_SETTING:Object = {
 	        Referer:[
 	            '\\w*.html'
 	        ],
+	        subRules:[
+	            {
+	              describe:"subRules 字段跟父级字段完全一致，主要是方便对特殊情况进行单独处理"
+	            }
+	        ],
             urlContain:"\\.html|\\.css|\\.js|\\.jpeg|\\.jpg|\\.png|\\.gif|\\.mp4|\\.flv|\\.webp",
             replaceWith:"http://localhost:3000",
             enabled:false

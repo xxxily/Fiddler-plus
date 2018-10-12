@@ -87,7 +87,7 @@ Fiddler的官网地址为：http://www.telerik.com/fiddler
 3、web Session面板，主要是Fiddler抓取到的每一条http请求（每一条称为一个session）,主要包含了请求的url，协议，状态码，body等信息，详细的字段含义如下：
 
  1.[#] -- HTTP 请求的链接类型图标和请求的顺序
- 2.[Result] -- HTTP 响应的状态码，相关状态码信息可以参考 [这里](https://segmentfault.com/a/1190000012282437) 和 [这里](http://tool.oschina.net/commons?type=5)
+ 2.[Result] -- HTTP 响应的状态码，相关状态码信息可以参考 [这里] (https://segmentfault.com/a/1190000012282437) 和 [这里](http://tool.oschina.net/commons?type=5)
  3.[Protocol] -- 请求使用的协议（如 HTTP/HTTPS/WS ）
  4.[Host] -- 请求地址的域名
  5.[URL] -- 请求的服务器路径和文件名，也包括GET参数

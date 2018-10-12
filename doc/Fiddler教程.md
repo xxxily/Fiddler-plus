@@ -54,7 +54,7 @@ Fiddler的官网地址为：http://www.telerik.com/fiddler
 下载地址：https://www.telerik.com/download/fiddler  
 进入下载页面后你将看到如下界面：  
   
-![Fiddler](img/downloadFiddler_dec01.png)  
+  ![Fiddler](img/downloadFiddler_dec01.png)
   
 可以看到Fiddler要求你选择一个使用它的用途，随便选择一个选项即可，  
 下面还有两个下载链接，一个是下载OS X（Mac）版本的Fiddler，另外一个是Linux版本的Fiddler，如果你有需要，可以点击下载安装，具体安装步骤和过程这里不介绍~  
@@ -67,12 +67,38 @@ Fiddler的官网地址为：http://www.telerik.com/fiddler
   
   ![Fiddler](img/downloadFiddler_dec03.png)  
   
-随便填写一个格式正确的邮箱地址即可点击下载按钮进行下载了，跳到下载页面，等待一段时间就会开始下载。  
+随便填写一个格式正确的邮箱地址即可点击下载按钮Z进行下载了，跳到下载页面，等待一段时间就会开始下载。
 下载好后双击即可开始安装了。。。
 
 如果你觉得以上步骤打开太慢，操作繁琐，可以到百度软件中心下载，详细地址请自行百度搜索：Fiddler 。
 
 ## 安装
+
+## 基本界面和功能介绍
+打开Fiddler，Fiddler主界面的布局如下：
+
+  ![Fiddler](img/UI_base.png)
+
+主界面中包括六打常用的模块，其中：
+
+1、Fiddler的菜单栏包含了大量的功能操作项和设置项
+2、Fiddler的工具栏，也就是菜单栏下面的一栏，包含了常用的快捷操作按钮，如清除会话信息、开启/禁止解码功能、设置sessions面板（URL面板）最大显示条数、保存会话信息、重放操作等。
+
+3、web Session面板，主要是Fiddler抓取到的每一条http请求（每一条称为一个session）,主要包含了请求的url，协议，状态码，body等信息，详细的字段含义如下：
+
+ 1.[#] -- HTTP 请求的链接类型图标和请求的顺序
+ 2.[Result] -- HTTP 响应的状态码，相关状态码信息可以参考 [这里](https://segmentfault.com/a/1190000012282437) 和 [这里](http://tool.oschina.net/commons?type=5)
+ 3.[Protocol] -- 请求使用的协议（如 HTTP/HTTPS/WS ）
+ 4.[Host] -- 请求地址的域名
+ 5.[URL] -- 请求的服务器路径和文件名，也包括GET参数
+ 6.[Body] -- 请求的大小，以byte为单位
+ 7.[Caching] -- 请求的缓存过期时间或缓存控制的 header 值
+ 8.[Content-Type] -- 请求响应的类型（[Content-Type](http://tool.oschina.net/commons)）
+ 9.[Process] -- 发出此请求的 window 进程名称或进程ID
+10.[Comments] -- 用户给此 session 增加的备注信息
+11.[Custom] -- 用户可以通过脚本设置的自定义值
+
+
 
 
 ## 更多教程内容还在编写中...

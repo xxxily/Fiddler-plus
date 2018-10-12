@@ -86,17 +86,17 @@ Fiddler的官网地址为：http://www.telerik.com/fiddler
 
 3、web Session面板，主要是Fiddler抓取到的每一条http请求（每一条称为一个session）,主要包含了请求的url，协议，状态码，body等信息，详细的字段含义如下：
 
- 1.[#] -- HTTP 请求的链接类型图标和请求的顺序
- 2.[Result] -- HTTP 响应的状态码，相关状态码信息可以参考   [这里] (https://segmentfault.com/a/1190000012282437) 和 [这里](http://tool.oschina.net/commons?type=5)
- 3.[Protocol] -- 请求使用的协议（如 HTTP/HTTPS/WS ）
- 4.[Host] -- 请求地址的域名
- 5.[URL] -- 请求的服务器路径和文件名，也包括GET参数
- 6.[Body] -- 请求的大小，以byte为单位
- 7.[Caching] -- 请求的缓存过期时间或缓存控制的 header 值
- 8.[Content-Type] -- 请求响应的类型（[Content-Type](http://tool.oschina.net/commons)）
- 9.[Process] -- 发出此请求的 window 进程名称或进程ID
-10.[Comments] -- 用户给此 session 增加的备注信息
-11.[Custom] -- 用户可以通过脚本设置的自定义值
+ 1.[#] -- HTTP 请求的链接类型图标和请求的顺序<br>
+ 2.[Result] -- HTTP 响应的状态码，相关状态码信息可以参考   [这里] (https://segmentfault.com/a/1190000012282437) 和 [这里](http://tool.oschina.net/commons?type=5)<br>
+ 3.[Protocol] -- 请求使用的协议（如 HTTP/HTTPS/WS ）<br>
+ 4.[Host] -- 请求地址的域名<br>
+ 5.[URL] -- 请求的服务器路径和文件名，也包括GET参数<br>
+ 6.[Body] -- 请求的大小，以byte为单位<br>
+ 7.[Caching] -- 请求的缓存过期时间或缓存控制的 header 值<br>
+ 8.[Content-Type] -- 请求响应的类型（[Content-Type](http://tool.oschina.net/commons)）<br>
+ 9.[Process] -- 发出此请求的 window 进程名称或进程ID<br>
+10.[Comments] -- 用户给此 session 增加的备注信息<br>
+11.[Custom] -- 用户可以通过脚本设置的自定义值<br>
 
 
 

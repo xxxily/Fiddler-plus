@@ -1,12 +1,12 @@
 # Fiddler plus 【高效调试分析利器】
 
-Fiddler是一个功能强大的HTTP抓包调试工具！但用起来却不是那么的顺手，界面繁杂、配置复杂，非常不符合高效程序猿的使用习惯...   
+Fiddler是一个功能强大的HTTP抓包调试工具！但用起来却不是那么的顺手，界面繁杂、配置复杂，非常不符合高效程序猿的使用习惯...
 Fiddler plus 重新定义了Fiddler的CustomRules.js，从而使Fiddler拥有了更加简单、灵活、丰富的配置方式，高逼格的显示界面，让你用起来不再羞(gan)涩(ga)。
 
 ## 开发进度说明：
-  ~~最后面提到的开发计划，现已基本开发完，但最近在写说明文档，所以还需过一段时间才会发布新版本~~ 
+  ~~最后面提到的开发计划，现已基本开发完，但最近在写说明文档，所以还需过一段时间才会发布新版本~~
   <br>
-  ~~ps:文档比代码难写多了！有木有。。。~~ 
+  ~~ps:文档比代码难写多了！有木有。。。~~
 
 
 ## 特点
@@ -19,16 +19,16 @@ Fiddler plus 重新定义了Fiddler的CustomRules.js，从而使Fiddler拥有了
 
 ## 优点&目标
 	功能强大、配置简单
-	
+
 ## 界面截图
-![运行截图](https://raw.githubusercontent.com/xxxily/Fiddler-plus/master/assets/screenshot/screenshot01.png "运行截图")     
+![运行截图](https://raw.githubusercontent.com/xxxily/Fiddler-plus/master/assets/screenshot/screenshot01.png "运行截图")
 
 ![运行截图](https://raw.githubusercontent.com/xxxily/Fiddler-plus/master/assets/screenshot/screenshot02.png "运行截图")
 
 ## 使用方式
 
-下载当前的 CustomRules.js ，替换掉Fiddler自带的 CustomRules.js 。  
-正常情况下文件的所在目录为：  
+下载当前的 CustomRules.js ，替换掉Fiddler自带的 CustomRules.js 。
+正常情况下文件的所在目录为：
 
 	%USERPROFILE%\Documents\Fiddler2\Scripts
 
@@ -301,12 +301,16 @@ var GLOBAL_SETTING:Object = {
 };
 //全局配置项 END
 ```
-特别说明：Fiddler 的 CustomRules.js 修改配置保存后是会自动立即生效的，无需重启    
+
+如果需要进行要禁用某些规则，只需在菜单栏里面操作选择开启或禁用即可：Rules > Fiddler-plus
+
+
+特别说明：Fiddler 的 CustomRules.js 修改配置保存后是会自动立即生效的，无需重启
 所以做服务器代理转发、切换开发环境的时候，写好配置后，只需打开或注释掉某行配置，然后保存即可实现实时切换
-  
-	
+
+
 	目前主要实现了：代理、替换、过滤、UI(skin)等功能；已经可满足绝大部分开发需求了，后续将继续完善
-	
+
 	暂时先这样，后续等代码完善好了再补充说明文档...
 
 ## 开发计划：
@@ -317,4 +321,4 @@ var GLOBAL_SETTING:Object = {
   <br>
   ~~2、全局禁止缓存感觉很蠢，严重影响正常上网体验，所以缓存也计划加入到 replacePlus 配置项里，针对性禁止缓存~~
 
-	
+

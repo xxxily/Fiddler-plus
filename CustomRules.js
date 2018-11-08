@@ -1,6 +1,6 @@
 ﻿/*!
  * Fiddler CustomRules
- * @Version 2.2.1
+ * @Version 2.2.2
  * @Author xxxily
  * @home https://github.com/xxxily/Fiddler-plus
  * @bugs https://github.com/xxxily/Fiddler-plus/issues
@@ -556,6 +556,9 @@ class Handlers {
   /*参考文档 END*/
 
   /*Fiddler-plus 选项开关 BEGIN*/
+  public static RulesOption("disable All plus rules", "Fiddler-plus")
+  var m_off_allPlusRules: boolean = false;
+
   public static RulesOption("disable Filter rules", "Fiddler-plus")
   var m_off_filterRules: boolean = false;
 
@@ -572,7 +575,7 @@ class Handlers {
   var m_off_injectRules: boolean = false;
 
   public static RulesOption("disable callbackAcion", "Fiddler-plus")
-  var m_off_callbackAcion: boolean = false;
+  var m_off_callbackAcion: boolean = true;
   /*Fiddler-plus 选项开关 END*/
 
   public static RulesOption("Hide 304s")
@@ -917,7 +920,7 @@ class Handlers {
      * 使用混杂模式的话，自动提取各个选项需要展示的URL地址
      * 由于不进行重复性判断，所以可能会出错和造成性能下降
      * */
-    if(!m_off_promiscuousMode){
+    if(!m_off_promiscuousMode && !m_off_allPlusRules){
       /*提取replace里面要显示的连接*/
       for (var key in GLOBAL_SETTING.replace) {
         if(key){
@@ -976,7 +979,7 @@ class Handlers {
    * @param oSession (session) -必选 session对象
    */
   public static function scriptInjecter(oSession) {
-    if(m_off_injectRules){
+    if(m_off_injectRules || m_off_allPlusRules){
       return false;
     }
 
@@ -1034,7 +1037,7 @@ class Handlers {
    * @param oSession (session) -必选 session对象
    */
   public static function replaceAgency(oSession) {
-    if(m_off_replaceRules){
+    if(m_off_replaceRules || m_off_allPlusRules){
       return false;
     }
 
@@ -1059,7 +1062,7 @@ class Handlers {
    * @param oSession (session) -必选 session对象
    */
   public static function replacePlusAgency(oSession) {
-    if(m_off_replaceRules){
+    if(m_off_replaceRules || m_off_allPlusRules){
       return false;
     }
 
@@ -1159,7 +1162,7 @@ class Handlers {
   public static function hideTunnelToLink(oSession) {
     // TODO 过滤 tunnel to 连接 待优化
     var hideTunnelTo = GLOBAL_SETTING.Filter.hideTunnelTo;
-    if(hideTunnelTo && !m_off_tunnelTo){
+    if(hideTunnelTo && !m_off_tunnelTo && !m_off_allPlusRules){
       settingMatch(oSession.fullUrl, [':443'], function () {
         hideLink(oSession);
       }, "【hideTunnelTo】配置出错，请检查你的配置");
@@ -1172,7 +1175,7 @@ class Handlers {
    * @param eventName (String) -必选，回调事件名称 可选值有：OnBeforeRequest OnPeekAtResponseHeaders OnBeforeResponse OnDone OnReturningError
    */
   public static function sessionCallback(oSession,eventName) {
-    if(m_off_callbackAcion || !oSession || !eventName || !settingMatch){
+    if(m_off_allPlusRules || m_off_callbackAcion || !oSession || !eventName || !settingMatch){
       // console.log('出现【未将对象引用设置到对象实例】的错误~');
       return false;
     }
@@ -1249,7 +1252,7 @@ class Handlers {
     if(settingMatch && settingUnMatch && oSession){
       sessionCallback && sessionCallback(oSession,'OnBeforeRequest');
 
-      if(!m_off_filterRules){
+      if(!m_off_filterRules && !m_off_allPlusRules){
         // 过滤出需要显示或隐藏的连接 BEGIN
 
         var showLinks = extractShowLinks(),
@@ -1308,7 +1311,7 @@ class Handlers {
 
 
       // 标注隐藏443链接
-      if(GLOBAL_SETTING.Filter.hideTunnelTo && !m_off_tunnelTo){
+      if(GLOBAL_SETTING.Filter.hideTunnelTo && !m_off_tunnelTo && !m_off_allPlusRules){
         settingMatch(oSession.fullUrl, [':443'], function () {
           oSession['hide-me'] = 'true';
         }, "【hideTunnelTo】配置出错，请检查你的配置");
@@ -1922,6 +1925,7 @@ class Handlers {
     }
   }
 }
+
 
 
 

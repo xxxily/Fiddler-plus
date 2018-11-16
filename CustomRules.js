@@ -26,8 +26,7 @@ var GLOBAL_SETTING: Object = {
     // 只显示URL包含以下字符的连接
     showLinks:[
       // "qq.com",
-      // "baidu.com",
-      // "youdao.com"
+      // "baidu.com"
     ],
     // 不能直接吧 :443规则写在 hideLinks 过滤项上，否则大部分的无关链接都会被间接隐藏
     // Tunnel To 影响前端审查，隐藏掉，目前无法彻底隐藏，逻辑待优化
